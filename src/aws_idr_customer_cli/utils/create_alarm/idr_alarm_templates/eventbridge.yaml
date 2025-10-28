@@ -1,0 +1,66 @@
+service_name: "EventBridge"
+  
+templates:
+  - name: "IDR-EventBridge-InvocationsFailedToBeSentToDlq"
+    service: "EventBridge"
+    alarm_type: "RELIABILITY"
+    description: "Measures invocations that couldn't be moved to a dead-letter queue"
+    configuration:
+      AlarmName: "IDR-EventBridge-InvocationsFailedToBeSentToDlq-${rule_name}"
+      MetricName: "InvocationsFailedToBeSentToDlq"
+      Namespace: "AWS/Events"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "RuleName",
+          Value: "${rule_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "EventBridge"
+      }
+    ]
+
+  - name: "IDR-EventBridge-ThrottledRules"
+    service: "EventBridge"
+    alarm_type: "RELIABILITY"
+    description: "Provides visibility into requests that exceed throttling limits"
+    configuration:
+      AlarmName: "IDR-EventBridge-ThrottledRules-${rule_name}"
+      MetricName: "ThrottledRules"
+      Namespace: "AWS/Events"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "RuleName",
+          Value: "${rule_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "EventBridge"
+      }
+    ]

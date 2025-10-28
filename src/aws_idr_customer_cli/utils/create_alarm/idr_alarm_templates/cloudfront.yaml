@@ -1,0 +1,69 @@
+service_name: "CloudFront"
+  
+templates:
+  - name: "IDR-CloudFront-5xxErrorRatePercentage"
+    service: "CloudFront"
+    alarm_type: "RELIABILITY"
+    description: "Monitors the ratio of HTTP 5xx server error responses to total requests"
+    configuration:
+      AlarmName: "IDR-CloudFront-5xxErrorRatePercentage-${distribution_id}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/CloudFront",
+              MetricName: "5xxErrorRate",
+              Dimensions: [
+                {
+                  Name: "DistributionId",
+                  Value: "${distribution_id}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/CloudFront",
+              MetricName: "Requests",
+              Dimensions: [
+                {
+                  Name: "DistributionId",
+                  Value: "${distribution_id}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/m2)*100",
+          Label: "5xx Error Rate Percentage"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "CloudFront"
+      }
+    ]

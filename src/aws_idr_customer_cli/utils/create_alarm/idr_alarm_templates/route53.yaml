@@ -1,0 +1,66 @@
+service_name: "Route53"
+  
+templates:
+  - name: "IDR-Route53-HealthCheckStatus"
+    service: "Route53"
+    alarm_type: "RELIABILITY"
+    description: "Monitors health check status to detect endpoint failures"
+    configuration:
+      AlarmName: "IDR-Route53-HealthCheckStatus-${health_check_id}"
+      MetricName: "HealthCheckStatus"
+      Namespace: "AWS/Route53"
+      Statistic: "Minimum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "HealthCheckId",
+          Value: "${health_check_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Route53"
+      }
+    ]
+
+  - name: "IDR-Route53-EndpointUnhealthyENICount"
+    service: "Route53"
+    alarm_type: "RELIABILITY"
+    description: "The number of elastic network interfaces in the AUTO_RECOVERING status"
+    configuration:
+      AlarmName: "IDR-Route53-EndpointUnhealthyENICount-${endpoint_id}"
+      MetricName: "EndpointUnhealthyENICount"
+      Namespace: "AWS/Route53Resolver"
+      Statistic: "Maximum"
+      Period: 300
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "EndpointId",
+          Value: "${endpoint_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Route53"
+      }
+    ]

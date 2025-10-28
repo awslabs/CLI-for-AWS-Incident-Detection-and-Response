@@ -1,0 +1,267 @@
+service_name: "IoT"
+  
+templates:
+  - name: "IDR-IoT-OverallFailureRate"
+    service: "IoT"
+    alarm_type: "RELIABILITY"
+    description: "Overall failure rate of IoT device operations - monitors system reliability"
+    configuration:
+      AlarmName: "IDR-IoT-OverallFailureRate-${rule_name}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "Failure",
+              Dimensions: [
+                {
+                  Name: "RuleName",
+                  Value: "${rule_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "Success",
+              Dimensions: [
+                {
+                  Name: "RuleName",
+                  Value: "${rule_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/(m1+m2))*100",
+          Label: "Failure Rate"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "IoT"
+      }
+    ]
+
+  - name: "IDR-IoT-ConnectServerErrorRate"
+    service: "IoT"
+    alarm_type: "RELIABILITY"
+    description: "Connection server error rate - identifies connection issues between IoT devices and cloud"
+    configuration:
+      AlarmName: "IDR-IoT-ConnectServerErrorRate-${protocol}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "Connect.ServerError",
+              Dimensions: [
+                {
+                  Name: "Protocol",
+                  Value: "${protocol}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "Connect.Success",
+              Dimensions: [
+                {
+                  Name: "Protocol",
+                  Value: "${protocol}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/(m1+m2))*100",
+          Label: "Connect Server Error Rate"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "IoT"
+      }
+    ]
+
+  - name: "IDR-IoT-PublishInServerErrorRate"
+    service: "IoT"
+    alarm_type: "RELIABILITY"
+    description: "Server errors when IoT devices attempt to publish data to cloud service"
+    configuration:
+      AlarmName: "IDR-IoT-PublishInServerErrorRate-${protocol}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "PublishIn.ServerError",
+              Dimensions: [
+                {
+                  Name: "Protocol",
+                  Value: "${protocol}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/IoT",
+              MetricName: "PublishIn.Success",
+              Dimensions: [
+                {
+                  Name: "Protocol",
+                  Value: "${protocol}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/(m1+m2))*100",
+          Label: "Publish In Server Error Rate"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "IoT"
+      }
+    ]
+
+  - name: "IDR-IoT-ConnectThrottle"
+    service: "IoT"
+    alarm_type: "RELIABILITY"
+    description: "Number of connection throttling events - indicates excessive connection attempts"
+    configuration:
+      AlarmName: "IDR-IoT-ConnectThrottle-${protocol}"
+      MetricName: "Connect.Throttle"
+      Namespace: "AWS/IoT"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 50.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "Protocol",
+          Value: "${protocol}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "IoT"
+      }
+    ]
+
+  - name: "IDR-IoT-PingSuccess"
+    service: "IoT"
+    alarm_type: "RELIABILITY"
+    description: "Success rate of connectivity between IoT devices and cloud service"
+    configuration:
+      AlarmName: "IDR-IoT-PingSuccess-${protocol}"
+      MetricName: "Ping.Success"
+      Namespace: "AWS/IoT"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 95.0
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "Protocol",
+          Value: "${protocol}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "IoT"
+      }
+    ]
