@@ -1,0 +1,176 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This CloudFormation Template deploys the AWS resouces needed to ingest alarms to Incident Detection and Response from 3rd Party APMs that have direct integration with Amazon EventBridge. Prerequisite AWS resources include an already created Partner Event Source and Partner Event Bus for your 3rd Party APM in Amazon EventBridge. The AWS resources deployed are below. - Custom Event Bus - EventBridge rule on existing Partner Event Bus - Lambda execution role - Lambda transform function - Lambda resource-based policy permission",
+    "Parameters": {
+        "APMNameParameter": {
+            "Type": "String",
+            "Description": "Enter the name of the Application Performance Monitoring (APM) tool without any spaces. e.g. NewRelic, DataDog, Splunk.",
+            "AllowedPattern": "^[a-zA-Z0-9]*$",
+            "ConstraintDescription": "The pattern allows only lowercase and uppercase alphabetical characters and numerals (^[a-zA-Z0-9]*$)."
+        },
+        "PartnerEventBusNameParameter": {
+            "Type": "String",
+            "Description": "Enter the Partner Event Bus Name of your 3rd Party APM. Example for New Relic is aws.partner/newrelic.com/1234567/source_name"
+        },
+        "PartnerEventBusPrefixParameter": {
+            "Type": "String",
+            "Description": "Enter the Event Bus Source Prefix of your 3rd Party APM. Example for New Relic is aws.partner/newrelic.com"
+        }
+    },
+    "Resources": {
+        "CustomEventBus": {
+            "Type": "AWS::Events::EventBus",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-EventBus"
+                }
+            }
+        },
+        "TransformLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Description": "IAM Role for Transform Lambda function to create logs and put events for customer Event Bus",
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Sub": "IDR-TransformLambdaExecutionRolePolicy"
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Transform:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "events:PutEvents",
+                                    "Resource": {
+                                        "Fn::GetAtt": "CustomEventBus.Arn"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Sub": "IDR-TransformLambdaExecutionRole-${AWS::Region}"
+                }
+            },
+            "DependsOn": [
+                "CustomEventBus"
+            ]
+        },
+        "TransformLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Transform"
+                },
+                "Description": "This function adds the necessary key:value pairs to the APM payload so that events can be ingested by AWS Incident Detection and Response.",
+                "Runtime": "python3.12",
+                "Timeout": 8,
+                "Role": {
+                    "Fn::GetAtt": "TransformLambdaExecutionRole.Arn"
+                },
+                "Environment": {
+                    "Variables": {
+                        "EnvEventBusName": {
+                            "Ref": "CustomEventBus"
+                        },
+                        "INCIDENT_PATH": "event[\"detail\"][\"workflowName\"]"
+                    }
+                },
+                "Handler": "index.lambda_handler",
+                "Code": {
+                    "ZipFile": "{{LAMBDA_CODE_PLACEHOLDER}}"
+                }
+            },
+            "DependsOn": [
+                "TransformLambdaExecutionRole"
+            ]
+        },
+        "EventBridgeRule": {
+            "Type": "AWS::Events::Rule",
+            "Properties": {
+                "Description": "EventBridge Rule attached to the partner event bus to ingest payloads from a 3rd party APM.",
+                "EventBusName": {
+                    "Ref": "PartnerEventBusNameParameter"
+                },
+                "EventPattern": {
+                    "source": [
+                        {
+                            "prefix": {
+                                "Ref": "PartnerEventBusPrefixParameter"
+                            }
+                        }
+                    ]
+                },
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-EventBridgeRule"
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Id": "TargetTransformLambdaFunctionV1",
+                        "Arn": {
+                            "Fn::GetAtt": "TransformLambdaFunction.Arn"
+                        }
+                    }
+                ]
+            },
+            "DependsOn": [
+                "TransformLambdaFunction"
+            ]
+        },
+        "TransformLambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Transform"
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::GetAtt": "EventBridgeRule.Arn"
+                }
+            },
+            "DependsOn": [
+                "TransformLambdaFunction",
+                "EventBridgeRule"
+            ]
+        }
+    }
+}

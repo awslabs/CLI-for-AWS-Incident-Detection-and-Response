@@ -1,0 +1,169 @@
+service_name: "Lambda"
+  
+templates:
+  - name: "IDR-Lambda-ErrorRate"
+    service: "Lambda"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors the ratio of errors to successful Lambda invocations"
+    configuration:
+      AlarmName: "IDR-Lambda-ErrorRate-${function_name}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/Lambda",
+              MetricName: "Errors",
+              Dimensions: [
+                {
+                  Name: "FunctionName",
+                  Value: "${function_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/Lambda",
+              MetricName: "Invocations",
+              Dimensions: [
+                {
+                  Name: "FunctionName",
+                  Value: "${function_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/m2)*100",
+          Label: "Error Rate"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Lambda"
+      }
+    ]
+
+  - name: "IDR-Lambda-Throttles"
+    service: "Lambda"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors invocation request throughput and throttling"
+    configuration:
+      AlarmName: "IDR-Lambda-Throttles-${function_name}"
+      MetricName: "Throttles"
+      Namespace: "AWS/Lambda"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "FunctionName",
+          Value: "${function_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Lambda"
+      }
+    ]
+
+  - name: "IDR-Lambda-DeadLetterErrors"
+    service: "Lambda"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors when messages fail to reach the DLQ"
+    configuration:
+      AlarmName: "IDR-Lambda-DeadLetterErrors-${function_name}"
+      MetricName: "DeadLetterErrors"
+      Namespace: "AWS/Lambda"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "FunctionName",
+          Value: "${function_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Lambda"
+      }
+    ]
+
+  - name: "IDR-Lambda-ConcurrentExecutions"
+    service: "Lambda"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the number of function instances running concurrently"
+    configuration:
+      AlarmName: "IDR-Lambda-ConcurrentExecutions-${function_name}"
+      MetricName: "ConcurrentExecutions"
+      Namespace: "AWS/Lambda"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 900.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "FunctionName",
+          Value: "${function_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Lambda"
+      }
+    ]

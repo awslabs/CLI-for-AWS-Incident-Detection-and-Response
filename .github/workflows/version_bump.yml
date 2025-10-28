@@ -1,0 +1,44 @@
+# This is a workflow to help you bump the verion automtically
+
+name: Bump Version
+
+permissions:
+  contents: write
+  pull-requests: write
+  
+# Controls when the workflow will run
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Select version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "bump"
+  bump:
+    name: 'Bump Version on master'
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - name: 'Checkout source code'
+      uses: actions/checkout@v5
+      with:
+          fetch-depth: 0
+      
+    - name: 'Automated Version Bump'
+      id: version-bump
+      uses: 'taj54/universal-version-bump@v0.14.0'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          release_type: ${{ inputs.release_type }}

@@ -1,0 +1,139 @@
+service_name: "API Gateway"
+  
+templates:
+  - name: "IDR-APIGateway-5XXErrorRate"
+    service: "API Gateway"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors API error rates as a percentage of total traffic using math expression"
+    configuration:
+      AlarmName: "IDR-APIGateway-5XXErrorRate-${api_name}"
+      AlarmDescription: "Monitors API error rates as a percentage of total traffic using math expression"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/ApiGateway",
+              MetricName: "5XXError",
+              Dimensions: [
+                {
+                  Name: "ApiName",
+                  Value: "${api_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/ApiGateway",
+              MetricName: "Count",
+              Dimensions: [
+                {
+                  Name: "ApiName",
+                  Value: "${api_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "(m1/m2)*100",
+          Label: "5XX Error Rate"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "API Gateway"
+      }
+    ]
+
+  - name: "IDR-APIGateway-Latency"
+    service: "API Gateway"
+    alarm_type: "PERFORMANCE"
+    metric_type: "NATIVE"
+    description: "Response time monitoring provides insight into end user experience and performance"
+    configuration:
+      AlarmName: "IDR-APIGateway-Latency-${api_name}"
+      AlarmDescription: "Response time monitoring provides insight into end user experience and performance"
+      MetricName: "Latency"
+      Namespace: "AWS/ApiGateway"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5000.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ApiName",
+          Value: "${api_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "API Gateway"
+      }
+    ]
+
+  - name: "IDR-APIGateway-IntegrationLatency"
+    service: "API Gateway"
+    alarm_type: "PERFORMANCE"
+    metric_type: "NATIVE"
+    description: "Measures the time taken between when API Gateway forwards a request to the backend and receives a response"
+    configuration:
+      AlarmName: "IDR-APIGateway-IntegrationLatency-${api_name}"
+      AlarmDescription: "Measures the time taken between when API Gateway forwards a request to the backend and receives a response"
+      MetricName: "IntegrationLatency"
+      Namespace: "AWS/ApiGateway"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 3000.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ApiName",
+          Value: "${api_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "API Gateway"
+      }
+    ]

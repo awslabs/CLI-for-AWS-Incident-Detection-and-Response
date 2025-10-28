@@ -1,0 +1,59 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CoreIdentityAndRegions",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetServiceBearerToken",
+        "ec2:DescribeRegions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchAlarmManagement",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:PutMetricAlarm"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ResourceDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources",
+        "tag:GetTagKeys",
+        "tag:GetTagValues"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SupportCaseManagement",
+      "Effect": "Allow",
+      "Action": [
+        "support:CreateCase",
+        "support:DescribeCases",
+        "support:AddCommunicationToCase",
+        "support:AddAttachmentsToSet"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": ["event-processor.health.amazonaws.com"]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:GetRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+service_name: "EC2"
+  
+templates:
+  - name: "IDR-EC2-StatusCheckFailed-Instance"
+    service: "EC2"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Reports whether the instance has passed the instance status check"
+    configuration:
+      AlarmName: "IDR-EC2-StatusCheckFailed-Instance-${instance_id}"
+      AlarmDescription: "Reports whether the instance has passed the instance status check"
+      MetricName: "StatusCheckFailed_Instance"
+      Namespace: "AWS/EC2"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "InstanceId",
+          Value: "${instance_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "EC2"
+      }
+    ]
+ 
+  - name: "IDR-EC2-StatusCheckFailed-System"
+    service: "EC2"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Reports whether the instance has passed the system status check"
+    configuration:
+      AlarmName: "IDR-EC2-StatusCheckFailed-System-${instance_id}"
+      AlarmDescription: "Reports whether the instance has passed the system status check"
+      MetricName: "StatusCheckFailed_System"
+      Namespace: "AWS/EC2"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "InstanceId",
+          Value: "${instance_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "EC2"
+      }
+    ]
+ 
+  - name: "IDR-EC2-StatusCheckFailed-AttachedEBS"
+    service: "EC2"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Reports whether the instance has passed the attached EBS status check"
+    configuration:
+      AlarmName: "IDR-EC2-StatusCheckFailed-AttachedEBS-${instance_id}"
+      AlarmDescription: "Reports whether the instance has passed the attached EBS status check"
+      MetricName: "StatusCheckFailed_AttachedEBS"
+      Namespace: "AWS/EC2"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "InstanceId",
+          Value: "${instance_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "EC2"
+      }
+    ]

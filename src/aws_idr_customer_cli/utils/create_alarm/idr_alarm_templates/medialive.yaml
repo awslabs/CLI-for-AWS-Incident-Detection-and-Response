@@ -1,0 +1,35 @@
+service_name: "AWS Elemental MediaLive"
+  
+templates:
+  - name: "IDR-MediaLive-SvqTime-High"
+    service: "AWS Elemental MediaLive"
+    alarm_type: "CUSTOMER_EXPERIENCE"
+    metric_type: "NATIVE"
+    description: "Percentage of time MediaLive had to reduce quality optimizations to emit output in real time"
+    configuration:
+      AlarmName: "IDR-MediaLive-SvqTime-High-${channel_id}"
+      MetricName: "SvqTime"
+      Namespace: "AWS/MediaLive"
+      Statistic: "Maximum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 80.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ChannelId",
+          Value: "${channel_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "AWS Elemental MediaLive"
+      }
+    ]

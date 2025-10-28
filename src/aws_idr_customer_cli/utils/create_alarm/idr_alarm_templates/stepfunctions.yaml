@@ -1,0 +1,101 @@
+service_name: "Step Functions"
+  
+templates:
+  - name: "IDR-StepFunctions-ExecutionsFailed"
+    service: "Step Functions"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors failed executions to detect workflow issues"
+    configuration:
+      AlarmName: "IDR-StepFunctions-ExecutionsFailed-${state_machine_name}"
+      MetricName: "ExecutionsFailed"
+      Namespace: "AWS/States"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StateMachineArn",
+          Value: "${state_machine_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Step Functions"
+      }
+    ]
+
+  - name: "IDR-StepFunctions-ExecutionsTimedOut"
+    service: "Step Functions"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors timed out executions to detect timeout issues"
+    configuration:
+      AlarmName: "IDR-StepFunctions-ExecutionsTimedOut-${state_machine_name}"
+      MetricName: "ExecutionsTimedOut"
+      Namespace: "AWS/States"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StateMachineArn",
+          Value: "${state_machine_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Step Functions"
+      }
+    ]
+
+  - name: "IDR-StepFunctions-ExecutionThrottled"
+    service: "Step Functions"
+    alarm_type: "LATENCY"
+    metric_type: "NATIVE"
+    description: "Tracks executions throttled due to exceeding AWS service limits"
+    configuration:
+      AlarmName: "IDR-StepFunctions-ExecutionThrottled-${state_machine_name}"
+      MetricName: "ExecutionThrottled"
+      Namespace: "AWS/States"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StateMachineArn",
+          Value: "${state_machine_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Step Functions"
+      }
+    ]

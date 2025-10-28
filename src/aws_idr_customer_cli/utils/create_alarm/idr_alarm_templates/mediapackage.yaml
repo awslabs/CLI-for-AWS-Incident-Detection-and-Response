@@ -1,0 +1,68 @@
+service_name: "AWS Elemental MediaPackage"
+  
+templates:
+  - name: "IDR-MediaPackage-EgressResponseTime-High"
+    service: "AWS Elemental MediaPackage"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Time that it takes MediaPackage to process each output request"
+    configuration:
+      AlarmName: "IDR-MediaPackage-EgressResponseTime-High-${origin_endpoint_id}"
+      MetricName: "EgressResponseTime"
+      Namespace: "AWS/MediaPackage"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "OriginEndpointId",
+          Value: "${origin_endpoint_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "AWS Elemental MediaPackage"
+      }
+    ]
+
+  - name: "IDR-MediaPackage-IngressResponseTime-High"
+    service: "AWS Elemental MediaPackage"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Time that it takes MediaPackage to process each input request"
+    configuration:
+      AlarmName: "IDR-MediaPackage-IngressResponseTime-High-${channel_id}"
+      MetricName: "IngressResponseTime"
+      Namespace: "AWS/MediaPackage"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ChannelId",
+          Value: "${channel_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "AWS Elemental MediaPackage"
+      }
+    ]

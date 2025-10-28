@@ -1,0 +1,68 @@
+service_name: "SQS"
+  
+templates:
+  - name: "IDR-SQS-ApproximateNumberOfMessagesVisible"
+    service: "SQS"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors the number of visible messages in the SQS queue that are awaiting processing"
+    configuration:
+      AlarmName: "IDR-SQS-ApproximateNumberOfMessagesVisible-${queue_name}"
+      MetricName: "ApproximateNumberOfMessagesVisible"
+      Namespace: "AWS/SQS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "QueueName",
+          Value: "${queue_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SQS"
+      }
+    ]
+
+  - name: "IDR-SQS-ApproximateAgeOfOldestMessage"
+    service: "SQS"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Measures the duration that the oldest message has been in the queue without being processed"
+    configuration:
+      AlarmName: "IDR-SQS-ApproximateAgeOfOldestMessage-${queue_name}"
+      MetricName: "ApproximateAgeOfOldestMessage"
+      Namespace: "AWS/SQS"
+      Statistic: "Maximum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 900.0  # 15 minutes
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "QueueName",
+          Value: "${queue_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SQS"
+      }
+    ]

@@ -1,0 +1,40 @@
+service_name: "CloudFront"
+  
+templates:
+  - name: "IDR-CloudFront-5xxErrorRate"
+    service: "CloudFront"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors the percentage of HTTP 5xx server error responses within total requests processed through Amazon CloudFront."
+    configuration:
+      AlarmName: "IDR-CloudFront-5xxErrorRate-${distribution_id}"
+      MetricName: "5xxErrorRate"
+      Namespace: "AWS/CloudFront"
+      Statistic: "Average"
+      Period: 60
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "DistributionId",
+          Value: "${distribution_id}"
+        },
+        {
+          Name: "Region",
+          Value: "Global"
+        }
+      ]  
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "CloudFront"
+      }
+    ]

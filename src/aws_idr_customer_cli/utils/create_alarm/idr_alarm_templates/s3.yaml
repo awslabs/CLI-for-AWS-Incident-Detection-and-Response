@@ -1,0 +1,37 @@
+service_name: "S3"
+  
+templates:
+  - name: "IDR-S3-TotalRequestLatency"
+    service: "S3"
+    alarm_type: "PERFORMANCE"
+    metric_type: "CONDITIONAL"
+    description: "Measures the total time taken to process requests to an S3 bucket"
+    configuration:
+      AlarmName: "IDR-S3-TotalRequestLatency-${bucket_name}"
+      AlarmDescription: "Measures the total time taken to process requests to an S3 bucket"
+      MetricName: "TotalRequestLatency"
+      Namespace: "AWS/S3"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "BucketName",
+          Value: "${bucket_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "S3"
+      }
+    ]
+    

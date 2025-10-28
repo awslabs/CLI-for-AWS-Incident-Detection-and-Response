@@ -1,0 +1,135 @@
+service_name: "DynamoDB"
+  
+templates:
+  - name: "IDR-DynamoDB-ReadThrottleEvents"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors read throttle events to detect capacity issues"
+    configuration:
+      AlarmName: "IDR-DynamoDB-ReadThrottleEvents-${table_name}"
+      AlarmDescription: "Monitors read throttle events to detect capacity issues"
+      MetricName: "ReadThrottleEvents"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-WriteThrottleEvents"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors write throttle events to detect capacity issues"
+    configuration:
+      AlarmName: "IDR-DynamoDB-WriteThrottleEvents-${table_name}"
+      MetricName: "WriteThrottleEvents"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-SuccessfulRequestLatency"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors successful request latency to detect performance degradation"
+    configuration:
+      AlarmName: "IDR-DynamoDB-SuccessfulRequestLatency-${table_name}"
+      MetricName: "SuccessfulRequestLatency"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 100.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-ReplicationLatency"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors replication latency for global tables"
+    configuration:
+      AlarmName: "IDR-DynamoDB-ReplicationLatency-${table_name}"
+      MetricName: "ReplicationLatency"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]

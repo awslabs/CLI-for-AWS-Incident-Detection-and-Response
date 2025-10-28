@@ -1,0 +1,167 @@
+service_name: "RDS"
+  
+templates:
+  - name: "IDR-RDS-DiskQueueDepth"
+    service: "RDS"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors outstanding IOs waiting to be processed - identifies performance bottlenecks"
+    configuration:
+      AlarmName: "IDR-RDS-DiskQueueDepth-${db_instance_identifier}"
+      MetricName: "DiskQueueDepth"
+      Namespace: "AWS/RDS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 25.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "DBInstanceIdentifier",
+          Value: "${db_instance_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "RDS"
+      }
+    ]
+
+  - name: "IDR-RDS-FreeStorageSpace"
+    service: "RDS"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Proactively monitors available storage capacity to prevent database outages"
+    configuration:
+      AlarmName: "IDR-RDS-FreeStorageSpace-${db_instance_identifier}"
+      MetricName: "FreeStorageSpace"
+      Namespace: "AWS/RDS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 2147483648.0  # 2GB in bytes
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "DBInstanceIdentifier",
+          Value: "${db_instance_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "RDS"
+      }
+    ]
+
+  - name: "IDR-RDS-ReplicaLag"
+    service: "RDS"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors replication lag times on RDS read replicas to ensure data freshness"
+    configuration:
+      AlarmName: "IDR-RDS-ReplicaLag-${db_instance_identifier}"
+      MetricName: "ReplicaLag"
+      Namespace: "AWS/RDS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 30.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "DBInstanceIdentifier",
+          Value: "${db_instance_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "RDS"
+      }
+    ]
+
+  - name: "IDR-RDS-ReadLatency"
+    service: "RDS"
+    alarm_type: "LATENCY"
+    metric_type: "NATIVE"
+    description: "Monitors average time to read data from database storage"
+    configuration:
+      AlarmName: "IDR-RDS-ReadLatency-${db_instance_identifier}"
+      MetricName: "ReadLatency"
+      Namespace: "AWS/RDS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 0.2
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "DBInstanceIdentifier",
+          Value: "${db_instance_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "RDS"
+      }
+    ]
+
+  - name: "IDR-RDS-WriteLatency"
+    service: "RDS"
+    alarm_type: "LATENCY"
+    metric_type: "NATIVE"
+    description: "Monitors average time to write data to database storage"
+    configuration:
+      AlarmName: "IDR-RDS-WriteLatency-${db_instance_identifier}"
+      MetricName: "WriteLatency"
+      Namespace: "AWS/RDS"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 0.2
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "DBInstanceIdentifier",
+          Value: "${db_instance_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "RDS"
+      }
+    ]

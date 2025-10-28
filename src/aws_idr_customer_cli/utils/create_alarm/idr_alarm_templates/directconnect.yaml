@@ -1,0 +1,36 @@
+service_name: "Direct Connect"
+  
+templates:
+  - name: "IDR-DirectConnect-ConnectionState-Down"
+    service: "Direct Connect"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "The state of the connection. 1 indicates up and 0 indicates down"
+    configuration:
+      AlarmName: "IDR-DirectConnect-ConnectionState-Down-${connection_id}"
+      AlarmDescription: "The state of the connection. 1 indicates up and 0 indicates down"
+      MetricName: "ConnectionState"
+      Namespace: "AWS/DX"
+      Statistic: "Maximum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 0.5
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "ConnectionId",
+          Value: "${connection_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Direct Connect"
+      }
+    ]

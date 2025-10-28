@@ -1,0 +1,137 @@
+service_name: "Keyspaces"
+  
+templates:
+  - name: "IDR-Keyspaces-PerConnectionRequestRateExceeded"
+    service: "Keyspaces"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the requests that exceed the per-connection request rate quota (3000 CQL requests per second)"
+    configuration:
+      AlarmName: "IDR-Keyspaces-PerConnectionRequestRateExceeded"
+      MetricName: "PerConnectionRequestRateExceeded"
+      Namespace: "AWS/Cassandra"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Keyspaces"
+      }
+    ]
+
+  - name: "IDR-Keyspaces-ReadThrottleEvents"
+    service: "Keyspaces"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the requests that exceed the provisioned read capacity for a table, or account level quotas, request per connection quotas, or partition level quotas"
+    configuration:
+      AlarmName: "IDR-Keyspaces-ReadThrottleEvents"
+      MetricName: "ReadThrottleEvents"
+      Namespace: "AWS/Cassandra"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Keyspaces"
+      }
+    ]
+
+  - name: "IDR-Keyspaces-WriteThrottleEvents"
+    service: "Keyspaces"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the requests that exceed the provisioned write capacity for a table, or account level quotas, request per connection quotas, or partition level quotas"
+    configuration:
+      AlarmName: "IDR-Keyspaces-WriteThrottleEvents"
+      MetricName: "WriteThrottleEvents"
+      Namespace: "AWS/Cassandra"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Keyspaces"
+      }
+    ]
+
+  - name: "IDR-Keyspaces-ReplicationLatency"
+    service: "Keyspaces"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors the time it took to replicate updates, inserts, or deletes from one replica table to another replica table in a multi-Region keyspace"
+    configuration:
+      AlarmName: "IDR-Keyspaces-ReplicationLatency"
+      MetricName: "ReplicationLatency"
+      Namespace: "AWS/Cassandra"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Keyspaces"
+      }
+    ]
+
+  - name: "IDR-Keyspaces-StoragePartitionThroughputCapacityExceeded"
+    service: "Keyspaces"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the requests that exceed the throughput capacity of the storage partition"
+    configuration:
+      AlarmName: "IDR-Keyspaces-StoragePartitionThroughputCapacityExceeded"
+      MetricName: "StoragePartitionThroughputCapacityExceeded"
+      Namespace: "AWS/Cassandra"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Keyspaces"
+      }
+    ]

@@ -1,0 +1,536 @@
+service_name: "EKS" # Address separately for https://repost.aws/articles/ARhnAXjQGMSr2l2_qb_J8uaA
+
+templates:
+  # Option 1 - Container Insights (AWS Service) - Container Status Metrics
+  - name: "IDR-EKS-container_crash_loop_back_off"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors containers stuck in CrashLoopBackOff"
+    configuration:
+      AlarmName: "IDR-EKS-container_crash_loop_back_off-${cluster_name}"
+      MetricName: "pod_container_status_waiting_reason_crash_loop_back_off"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+      {
+          Name: "ClusterName",
+        Value: "${cluster_name}"
+      }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-container_create_container_config_error"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors containers with CreateContainerConfigError"
+    configuration:
+      AlarmName: "IDR-EKS-container_create_container_config_error-${cluster_name}"
+      MetricName: "pod_container_status_waiting_reason_create_container_config_error"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-container_create_container_error"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors containers with CreateContainerError"
+    configuration:
+      AlarmName: "IDR-EKS-container_create_container_error-${cluster_name}"
+      MetricName: "pod_container_status_waiting_reason_create_container_error"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-container_image_pull_error"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors containers with image pull errors"
+    configuration:
+      AlarmName: "IDR-EKS-container_image_pull_error-${cluster_name}"
+      MetricName: "pod_container_status_waiting_reason_image_pull_error"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-container_start_error"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors containers with start errors"
+    configuration:
+      AlarmName: "IDR-EKS-container_start_error-${cluster_name}"
+      MetricName: "pod_container_status_waiting_reason_start_error"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  # Option 1 - Container Insights (AWS Service) - Cluster Status Metrics
+  - name: "IDR-EKS-cluster_failed_node_count"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors failed worker nodes in the EKS cluster"
+    configuration:
+      AlarmName: "IDR-EKS-cluster_failed_node_count-${cluster_name}"
+      MetricName: "cluster_failed_node_count"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  # Option 1 - Container Insights (AWS Service) - Pod Status Metrics
+  - name: "IDR-EKS-pod_status_unknown"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors pods with unknown status"
+    configuration:
+      AlarmName: "IDR-EKS-pod_status_unknown-${cluster_name}"
+      MetricName: "pod_status_unknown"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  # Option 1 - Container Insights (AWS Service) - API Server Status Metrics
+  - name: "IDR-EKS-apiserver_admission_webhook_admission_duration_seconds"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NATIVE"
+    description: "Monitors admission webhook latency"
+    configuration:
+      AlarmName: "IDR-EKS-apiserver_admission_webhook_admission_duration_seconds-${cluster_name}"
+      MetricName: "apiserver_admission_webhook_admission_duration_seconds"
+      Namespace: "ContainerInsights"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  # Option 2 - Prometheus Integration - API Server Status (Prometheus)
+  - name: "IDR-EKS-apiserver_admission_controller_admission_duration_seconds"
+    service: "EKS"
+    alarm_type: "PROACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors admission controller latency"
+    configuration:
+      AlarmName: "IDR-EKS-apiserver_admission_controller_admission_duration_seconds-${cluster_name}"
+      MetricName: "apiserver_admission_controller_admission_duration_seconds"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Proactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-apiserver_authorization_webhook_duration_seconds"
+    service: "EKS"
+    alarm_type: "PROACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors authorization webhook duration"
+    configuration:
+      AlarmName: "IDR-EKS-apiserver_authorization_webhook_duration_seconds-${cluster_name}"
+      MetricName: "apiserver_authorization_webhook_duration_seconds"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Proactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-apiserver_clusterip_repair_ip_errors_total"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors cluster IP repair errors"
+    configuration:
+      AlarmName: "IDR-EKS-apiserver_clusterip_repair_ip_errors_total-${cluster_name}"
+      MetricName: "apiserver_clusterip_repair_ip_errors_total"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-apiserver_nodeport_repair_port_errors_total"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors node port repair errors"
+    configuration:
+      AlarmName: "IDR-EKS-apiserver_nodeport_repair_port_errors_total-${cluster_name}"
+      MetricName: "apiserver_nodeport_repair_port_errors_total"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  # Option 2 - Prometheus Integration - Cluster Status (Prometheus)
+  - name: "IDR-EKS-kubelet_started_containers_errors_total"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors container start errors"
+    configuration:
+      AlarmName: "IDR-EKS-kubelet_started_containers_errors_total-${cluster_name}"
+      MetricName: "kubelet_started_containers_errors_total"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-kubelet_runtime_operations_errors_total"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors kubelet runtime operation errors"
+    configuration:
+      AlarmName: "IDR-EKS-kubelet_runtime_operations_errors_total-${cluster_name}"
+      MetricName: "kubelet_runtime_operations_errors_total"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-kubelet_started_pods_errors_total"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors pod start errors"
+    configuration:
+      AlarmName: "IDR-EKS-kubelet_started_pods_errors_total-${cluster_name}"
+      MetricName: "kubelet_started_pods_errors_total"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]
+
+  - name: "IDR-EKS-node_collector_zone_health"
+    service: "EKS"
+    alarm_type: "REACTIVE"
+    metric_type: "NON-NATIVE"
+    description: "Monitors node health percentage per zone"
+    configuration:
+      AlarmName: "IDR-EKS-node_collector_zone_health-${cluster_name}"
+      MetricName: "node_collector_zone_health"
+      Namespace: "ContainerInsights/Prometheus"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+            {
+              Name: "ClusterName",
+              Value: "${cluster_name}"
+            }
+          ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "Reactive"
+      },
+      {
+        Key: "Service",
+        Value: "EKS"
+      }
+    ]

@@ -1,0 +1,168 @@
+service_name: "SNS"
+  
+templates:
+  - name: "IDR-SNS-NumberOfNotificationsFailed"
+    service: "SNS"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors failed notifications to detect delivery issues"
+    configuration:
+      AlarmName: "IDR-SNS-NumberOfNotificationsFailed-${topic_name}"
+      MetricName: "NumberOfNotificationsFailed"
+      Namespace: "AWS/SNS"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TopicName",
+          Value: "${topic_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SNS"
+      }
+    ]
+
+  - name: "IDR-SNS-NumberOfNotificationsFilteredOut-InvalidAttributes"
+    service: "SNS"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors notifications filtered due to invalid attributes"
+    configuration:
+      AlarmName: "IDR-SNS-NumberOfNotificationsFilteredOut-InvalidAttributes-${topic_name}"
+      MetricName: "NumberOfNotificationsFilteredOut-InvalidAttributes"
+      Namespace: "AWS/SNS"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TopicName",
+          Value: "${topic_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SNS"
+      }
+    ]
+
+  - name: "IDR-SNS-NumberOfNotificationsFilteredOut-NoMessageAttributes"
+    service: "SNS"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors notifications filtered due to missing message attributes"
+    configuration:
+      AlarmName: "IDR-SNS-NumberOfNotificationsFilteredOut-NoMessageAttributes-${topic_name}"
+      MetricName: "NumberOfNotificationsFilteredOut-NoMessageAttributes"
+      Namespace: "AWS/SNS"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TopicName",
+          Value: "${topic_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SNS"
+      }
+    ]
+
+  - name: "IDR-SNS-NumberOfNotificationsFilteredOut-InvalidMessageBody"
+    service: "SNS"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors notifications filtered due to invalid message body"
+    configuration:
+      AlarmName: "IDR-SNS-NumberOfNotificationsFilteredOut-InvalidMessageBody-${topic_name}"
+      MetricName: "NumberOfNotificationsFilteredOut-InvalidMessageBody"
+      Namespace: "AWS/SNS"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TopicName",
+          Value: "${topic_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SNS"
+      }
+    ]
+
+  - name: "IDR-SNS-NumberOfNotificationsRedrivenToDlq"
+    service: "SNS"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors notifications redirected to a Dead Letter Queue"
+    configuration:
+      AlarmName: "IDR-SNS-NumberOfNotificationsRedrivenToDlq-${topic_name}"
+      MetricName: "NumberOfNotificationsRedrivenToDlq"
+      Namespace: "AWS/SNS"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TopicName",
+          Value: "${topic_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "SNS"
+      }
+    ]
+

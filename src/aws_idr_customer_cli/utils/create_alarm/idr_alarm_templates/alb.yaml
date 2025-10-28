@@ -1,0 +1,157 @@
+service_name: "ALB"
+  
+templates:
+  - name: "IDR-ALB-HTTPErrorRate"
+    service: "ALB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors ratio of HTTP errors (4XX+5XX) to total requests for application stability"
+    configuration:
+      AlarmName: "IDR-ALB-HTTPErrorRate-${load_balancer_name}"
+      AlarmDescription: "Monitors ratio of HTTP errors (4XX+5XX) to total requests for application stability"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/ApplicationELB",
+              MetricName: "HTTPCode_Target_4XX_Count",
+              Dimensions: [
+                {
+                  Name: "LoadBalancer",
+                  Value: "${load_balancer_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/ApplicationELB",
+              MetricName: "HTTPCode_Target_5XX_Count",
+              Dimensions: [
+                {
+                  Name: "LoadBalancer",
+                  Value: "${load_balancer_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m3",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/ApplicationELB",
+              MetricName: "RequestCount",
+              Dimensions: [
+                {
+                  Name: "LoadBalancer",
+                  Value: "${load_balancer_name}"
+                }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "expr",
+          ReturnData: true,
+          Expression: "((m1 + m2) / m3) * 100",
+          Label: "HTTP Error Rate %"
+        }
+      ]
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ALB"
+      }
+    ]
+
+  - name: "IDR-ALB-RejectedConnectionCount"
+    service: "ALB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors rejected connections when load balancer reaches maximum capacity"
+    configuration:
+      AlarmName: "IDR-ALB-RejectedConnectionCount-${load_balancer_name}"
+      AlarmDescription: "Monitors rejected connections when load balancer reaches maximum capacity"
+      MetricName: "RejectedConnectionCount"
+      Namespace: "AWS/ApplicationELB"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "LoadBalancer",
+          Value: "${load_balancer_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ALB"
+      }
+    ]
+
+  - name: "IDR-ALB-TargetResponseTime"
+    service: "ALB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors time elapsed from request leaving load balancer until target starts sending response headers"
+    configuration:
+      AlarmName: "IDR-ALB-TargetResponseTime-${load_balancer_name}"
+      AlarmDescription: "Monitors time elapsed from request leaving load balancer until target starts sending response headers"
+      MetricName: "TargetResponseTime"
+      Namespace: "AWS/ApplicationELB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0  # 1 second
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "LoadBalancer",
+          Value: "${load_balancer_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ALB"
+      }
+    ]

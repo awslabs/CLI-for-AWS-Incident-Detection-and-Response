@@ -1,0 +1,167 @@
+service_name: "Redshift"
+  
+templates:
+  - name: "IDR-Redshift-DatabaseConnections"
+    service: "Redshift"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the number of database connections to a cluster"
+    configuration:
+      AlarmName: "IDR-Redshift-DatabaseConnections-${cluster_identifier}"
+      MetricName: "DatabaseConnections"
+      Namespace: "AWS/Redshift"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 90.0  # Set to 90% of max connections
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "ClusterIdentifier",
+          Value: "${cluster_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Redshift"
+      }
+    ]
+
+  - name: "IDR-Redshift-HealthStatus"
+    service: "Redshift"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Indicates the health of the cluster"
+    configuration:
+      AlarmName: "IDR-Redshift-HealthStatus-${cluster_identifier}"
+      MetricName: "HealthStatus"
+      Namespace: "AWS/Redshift"
+      Statistic: "Minimum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "ClusterIdentifier",
+          Value: "${cluster_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Redshift"
+      }
+    ]
+
+  - name: "IDR-Redshift-PercentageDiskSpaceUsed"
+    service: "Redshift"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the percent of disk space used"
+    configuration:
+      AlarmName: "IDR-Redshift-PercentageDiskSpaceUsed-${cluster_identifier}"
+      MetricName: "PercentageDiskSpaceUsed"
+      Namespace: "AWS/Redshift"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 95.0  # 95% of max storage space
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "ClusterIdentifier",
+          Value: "${cluster_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Redshift"
+      }
+    ]
+
+  - name: "IDR-Redshift-ReadLatency"
+    service: "Redshift"
+    alarm_type: "LATENCY"
+    metric_type: "NATIVE"
+    description: "Tracks the average amount of time taken for disk read I/O operations"
+    configuration:
+      AlarmName: "IDR-Redshift-ReadLatency-${cluster_identifier}"
+      MetricName: "ReadLatency"
+      Namespace: "AWS/Redshift"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 20.0  # 20ms threshold - adjust as needed
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ClusterIdentifier",
+          Value: "${cluster_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Redshift"
+      }
+    ]
+
+  - name: "IDR-Redshift-WriteLatency"
+    service: "Redshift"
+    alarm_type: "LATENCY"
+    metric_type: "NATIVE"
+    description: "Tracks the average amount of time taken for disk write I/O operations"
+    configuration:
+      AlarmName: "IDR-Redshift-WriteLatency-${cluster_identifier}"
+      MetricName: "WriteLatency"
+      Namespace: "AWS/Redshift"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 20.0  # 20ms threshold - adjust as needed
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "ClusterIdentifier",
+          Value: "${cluster_identifier}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Redshift"
+      }
+    ]

@@ -1,0 +1,101 @@
+service_name: "ElastiCache"
+  
+templates:
+  - name: "IDR-ElastiCache-FreeableMemory"
+    service: "ElastiCache"
+    alarm_type: "PERFORMANCE"
+    metric_type: "NATIVE"
+    description: "Monitors low freeable memory which can indicate spike in connections or high memory pressure"
+    configuration:
+      AlarmName: "IDR-ElastiCache-FreeableMemory-${cluster_id}"
+      MetricName: "FreeableMemory"
+      Namespace: "AWS/ElastiCache"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 100000000  # Set appropriate threshold in bytes
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "CacheClusterId",
+          Value: "${cluster_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ElastiCache"
+      }
+    ]
+
+  - name: "IDR-ElastiCache-DatabaseMemoryUsagePercentage"
+    service: "ElastiCache"
+    alarm_type: "PERFORMANCE"
+    metric_type: "NATIVE"
+    description: "Monitors the percentage of memory utilization for Redis clusters"
+    configuration:
+      AlarmName: "IDR-ElastiCache-DatabaseMemoryUsagePercentage-${cluster_id}"
+      MetricName: "DatabaseMemoryUsagePercentage"
+      Namespace: "AWS/ElastiCache"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 90.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "CacheClusterId",
+          Value: "${cluster_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ElastiCache"
+      }
+    ]
+
+  - name: "IDR-ElastiCache-CurrConnections"
+    service: "ElastiCache"
+    alarm_type: "PERFORMANCE"
+    metric_type: "NATIVE"
+    description: "Monitors the number of client connections, excluding connections from read replicas"
+    configuration:
+      AlarmName: "IDR-ElastiCache-CurrConnections-${cluster_id}"
+      MetricName: "CurrConnections"
+      Namespace: "AWS/ElastiCache"
+      Statistic: "Maximum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000  # Set appropriate threshold
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "CacheClusterId",
+          Value: "${cluster_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "ElastiCache"
+      }
+    ]

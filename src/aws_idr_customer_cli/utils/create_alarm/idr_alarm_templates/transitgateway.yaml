@@ -1,0 +1,68 @@
+service_name: "VPC Transit Gateway"
+  
+templates:
+  - name: "IDR-TransitGateway-BytesDropCountBlackhole-High"
+    service: "VPC Transit Gateway"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Number of bytes dropped because they matched a blackhole route"
+    configuration:
+      AlarmName: "IDR-TransitGateway-BytesDropCountBlackhole-High-${transit_gateway_id}"
+      MetricName: "BytesDropCountBlackhole"
+      Namespace: "AWS/TransitGateway"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TransitGateway",
+          Value: "${transit_gateway_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "VPC Transit Gateway"
+      }
+    ]
+
+  - name: "IDR-TransitGateway-BytesDropCountNoRoute-High"
+    service: "VPC Transit Gateway"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Number of bytes dropped because they did not match a route"
+    configuration:
+      AlarmName: "IDR-TransitGateway-BytesDropCountNoRoute-High-${transit_gateway_id}"
+      MetricName: "BytesDropCountNoRoute"
+      Namespace: "AWS/TransitGateway"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1000000.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "TransitGateway",
+          Value: "${transit_gateway_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "VPC Transit Gateway"
+      }
+    ]

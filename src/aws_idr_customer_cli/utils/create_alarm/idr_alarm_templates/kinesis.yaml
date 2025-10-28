@@ -1,0 +1,167 @@
+service_name: "Kinesis"
+  
+templates:
+  - name: "IDR-Kinesis-ReadProvisionedThroughputExceeded"
+    service: "Kinesis"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the number of times read operations exceed the provisioned read throughput capacity"
+    configuration:
+      AlarmName: "IDR-Kinesis-ReadProvisionedThroughputExceeded-${stream_name}"
+      MetricName: "ReadProvisionedThroughputExceeded"
+      Namespace: "AWS/Kinesis"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StreamName",
+          Value: "${stream_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Kinesis"
+      }
+    ]
+
+  - name: "IDR-Kinesis-WriteProvisionedThroughputExceeded"
+    service: "Kinesis"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Identifies when write capacity limits are hit causing data ingestion delays or failures"
+    configuration:
+      AlarmName: "IDR-Kinesis-WriteProvisionedThroughputExceeded-${stream_name}"
+      MetricName: "WriteProvisionedThroughputExceeded"
+      Namespace: "AWS/Kinesis"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StreamName",
+          Value: "${stream_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Kinesis"
+      }
+    ]
+
+  - name: "IDR-Kinesis-GetRecordsIteratorAge"
+    service: "Kinesis"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks how long records have been in the stream before being processed"
+    configuration:
+      AlarmName: "IDR-Kinesis-GetRecordsIteratorAge-${stream_name}"
+      MetricName: "GetRecords.IteratorAgeMilliseconds"
+      Namespace: "AWS/Kinesis"
+      Statistic: "Maximum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 600000.0  # Set appropriate threshold in milliseconds
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StreamName",
+          Value: "${stream_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Kinesis"
+      }
+    ]
+
+  - name: "IDR-Kinesis-PutRecordsFailedRecords"
+    service: "Kinesis"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Tracks the number of records that fail to be processed"
+    configuration:
+      AlarmName: "IDR-Kinesis-PutRecordsFailedRecords-${stream_name}"
+      MetricName: "PutRecords.FailedRecords"
+      Namespace: "AWS/Kinesis"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StreamName",
+          Value: "${stream_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Kinesis"
+      }
+    ]
+
+  - name: "IDR-Kinesis-PutRecordsThrottledRecords"
+    service: "Kinesis"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors read throttling to detect capacity issues"
+    configuration:
+      AlarmName: "IDR-Kinesis-PutRecordsThrottledRecords-${stream_name}"
+      MetricName: "PutRecords.ThrottledRecords"
+      Namespace: "AWS/Kinesis"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "GreaterThanThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "StreamName",
+          Value: "${stream_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Kinesis"
+      }
+    ]
