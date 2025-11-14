@@ -1,0 +1,44 @@
+# This is a workflow to help you bump the verion automtically
+
+name: Version Bump
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "bump"
+  bump:
+    name: 'Bump Version on master'
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - name: 'Checkout source code'
+      uses: actions/checkout@v2
+      
+    - name: 'cat package.json'
+      run: cat ./package.json
+      
+    - name: 'Automated Version Bump'
+      id: version-bump
+      uses: 'phips28/gh-action-bump-version@master'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # Customize the messages that trigger the version bump. It must be a string, case sensitive, comma separated, default to patch
+        major-wording: 'major'
+        minor-wording: 'minor'
+        patch-wording: 'patch'
+
+    - name: 'cat package.json'
+      run: cat ./package.json
+    
+    - name: 'Output Step'
+      env:
+        NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
+      run: echo "new tag $NEW_TAG"
