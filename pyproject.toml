@@ -24,8 +24,8 @@ requires-python = ">=3.9"
 readme = "README.md"
 
 [tool.hatch.version]
-source = "file"
-path = "package.json"
+source = "code"
+path = "src/aws_idr_customer_cli/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aws_idr_customer_cli"]
