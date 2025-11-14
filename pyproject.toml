@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aws-idr-cli"
-dynamic = ["version"]
+version = "1.0.0"
 dependencies = [
     "arnparse>=0.0.2",
     "aws-lambda-powertools==3.7.0",
@@ -22,10 +22,6 @@ dependencies = [
 ]
 requires-python = ">=3.9"
 readme = "README.md"
-
-[tool.hatch.version]
-source = "file"
-path = "package.json"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aws_idr_customer_cli"]
