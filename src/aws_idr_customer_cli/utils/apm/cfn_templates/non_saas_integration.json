@@ -1,0 +1,421 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This Cloudformation Template deploys the AWS resouces needed to ingest alerts to Incident Detection and Response from 3rd Party APMs which do not have direct integration with Amazon EventBridge. The AWS resources deployed contains below. - Secrets Manager - Authorizer Lambda function, execution role and permission - Transform Lambda function, execution role and permission - Custom EventBridge - API Gateway and Authorizer",
+    "Parameters": {
+        "APMNameParameter": {
+            "Type": "String",
+            "Default": "Dynatrace",
+            "Description": "Enter the name of the Application Performance Monitoring (APM) tool without any spaces. e.g. Dynatrace, SumoLogic, Prometheus.",
+            "AllowedPattern": "^[a-zA-Z0-9]*$",
+            "ConstraintDescription": "The pattern allows only lowercase and uppercase alphabetical characters and numerals (^[a-zA-Z0-9]*$)."
+        }
+    },
+    "Resources": {
+        "SecretCreation": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}MySecretTokenName"
+                },
+                "GenerateSecretString": {
+                    "SecretStringTemplate": "{\"username\": \"test-user\"}",
+                    "GenerateStringKey": "APMSecureToken",
+                    "PasswordLength": 18,
+                    "ExcludePunctuation": true
+                }
+            }
+        },
+        "CustomEventBus": {
+            "Type": "AWS::Events::EventBus",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-EventBus"
+                }
+            }
+        },
+        "TransformLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Description": "IAM Role for Transform Lambda function to create logs and put events for custom Event Bus",
+                "Policies": [
+                    {
+                        "PolicyName": "IDR-TransformLambdaExecutionRolePolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Transform:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "events:PutEvents",
+                                    "Resource": {
+                                        "Fn::GetAtt": "CustomEventBus.Arn"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Sub": "IDR-TransformLambdaExecutionRole-${AWS::Region}"
+                }
+            },
+            "DependsOn": [
+                "CustomEventBus"
+            ]
+        },
+        "TransformLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Transform"
+                },
+                "Description": "This function adds the necessary key:value pairs to the APM payload so that events can be ingested by AWS Incident Detection and Response.",
+                "Runtime": "python3.12",
+                "Timeout": 8,
+                "Role": {
+                    "Fn::GetAtt": "TransformLambdaExecutionRole.Arn"
+                },
+                "Environment": {
+                    "Variables": {
+                        "EnvEventBusName": {
+                            "Ref": "CustomEventBus"
+                        },
+                        "INCIDENT_PATH": "raw_json[\"detail\"][\"ProblemTitle\"]"
+                    }
+                },
+                "Handler": "index.lambda_handler",
+                "Code": {
+                    "ZipFile": "{{LAMBDA_CODE_PLACEHOLDER}}"
+                }
+            },
+            "DependsOn": [
+                "TransformLambdaExecutionRole"
+            ]
+        },
+        "AuthorizerLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Description": "IAM Role for Transform Lambda function to create logs and put events for customer Event Bus",
+                "Policies": [
+                    {
+                        "PolicyName": "IDR-AuthorizerLambdaExecutionRolePolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Authorizer:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "secretsmanager:GetSecretValue",
+                                    "Resource": {
+                                        "Fn::Sub": "${SecretCreation}"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Sub": "IDR-AuthorizerLambdaExecutionRole-${AWS::Region}"
+                }
+            },
+            "DependsOn": [
+                "SecretCreation"
+            ]
+        },
+        "AuthorizerLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-Lambda-Authorizer"
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": "AuthorizerLambdaExecutionRole.Arn"
+                },
+                "Environment": {
+                    "Variables": {
+                        "EnvSecretName": {
+                            "Ref": "SecretCreation"
+                        }
+                    }
+                },
+                "Runtime": "nodejs22.x",
+                "Code": {
+                    "ZipFile": "// This is an example Authentication Lambda that is configured for use with the Dynatrace APM, using a header named authorizationToken.\n// Please edit this code accordingly to meet your internal security posture and/or APM requirements.\nconst {\nSecretsManagerClient,\nGetSecretValueCommand\n    } = require(\"@aws-sdk/client-secrets-manager\");\n\nexports.handler = async(event) => {          \n\nconst secret_name = process.env.EnvSecretName;\n    const client = new SecretsManagerClient({\n        region: process.env.AWS_REGION\n        });\n    \n    let response;\n    \n    try {\n        response = await client.send(\n        new GetSecretValueCommand({\n            SecretId: secret_name,\n            VersionStage: \"AWSCURRENT\", // VersionStage defaults to AWSCURRENT if unspecified\n        })\n        );\n    } catch (error) {\n    throw error;\n    }\n\n    const secret = response.SecretString;\n    \n    const token = event['authorizationToken']\n    const resource = event[\"methodArn\"]\n\n    let permission = \"Deny\";\n    let authResult;\n    \n    if(token === JSON.parse(secret).APMSecureToken) {\n        permission = \"Allow\"\n        authResult = \"======= Authorization Success =======\";\n    } else {\n    authResult = \"======= Authorization Failure =======\";\n    }\n    console.log(authResult)\n    \n    const authResponse = { \n        \"principalId\": \"idrAuth\", \n        \"policyDocument\": \n            { \n                \"Version\": \"2012-10-17\", \n                \"Statement\": \n                        [\n                            {\n                                \"Action\": \"execute-api:Invoke\", \n                                \"Resource\": [resource], \n                                \"Effect\": permission\n                            }\n                        ]\n            }\n\n    }\n    return authResponse;\n};"
+                }
+            },
+            "DependsOn": [
+                "AuthorizerLambdaExecutionRole",
+                "SecretCreation"
+            ]
+        },
+        "RestAPIforAPM": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}-AWSIncidentDetectionResponse-APIGW"
+                },
+                "EndpointConfiguration": {
+                    "Types": [
+                        "REGIONAL"
+                    ]
+                }
+            }
+        },
+        "APIGWResourcesforAPM": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "ParentId": {
+                    "Fn::GetAtt": "RestAPIforAPM.RootResourceId"
+                },
+                "PathPart": "APIGWResourcesforAPM",
+                "RestApiId": {
+                    "Ref": "RestAPIforAPM"
+                }
+            }
+        },
+        "APIGWAuthorizerforAPM": {
+            "Type": "AWS::ApiGateway::Authorizer",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${APMNameParameter}-APIGW-Authorizer"
+                },
+                "Type": "TOKEN",
+                "IdentitySource": "method.request.header.authorizationToken",
+                "AuthorizerUri": {
+                    "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambdaFunction.Arn}/invocations"
+                },
+                "RestApiId": {
+                    "Ref": "RestAPIforAPM"
+                }
+            }
+        },
+        "APMAPIGwMethod": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestAPIforAPM"
+                },
+                "ResourceId": {
+                    "Ref": "APIGWResourcesforAPM"
+                },
+                "HttpMethod": "POST",
+                "MethodResponses": [
+                    {
+                        "StatusCode": 200
+                    }
+                ],
+                "AuthorizationType": "CUSTOM",
+                "AuthorizerId": {
+                    "Ref": "APIGWAuthorizerforAPM"
+                },
+                "Integration": {
+                    "Type": "AWS",
+                    "IntegrationResponses": [
+                        {
+                            "StatusCode": 200
+                        }
+                    ],
+                    "IntegrationHttpMethod": "POST",
+                    "Uri": {
+                        "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TransformLambdaFunction.Arn}/invocations"
+                    }
+                }
+            },
+            "DependsOn": [
+                "APIGWAuthorizerforAPM"
+            ]
+        },
+        "APIGWCloudWatchRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "apigateway.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+                ]
+            }
+        },
+        "Account": {
+            "Type": "AWS::ApiGateway::Account",
+            "Properties": {
+                "CloudWatchRoleArn": {
+                    "Fn::GetAtt": "APIGWCloudWatchRole.Arn"
+                }
+            }
+        },
+        "APIGWDeployment": {
+            "DependsOn": [
+                "APMAPIGwMethod",
+                "APIGWCloudWatchRole"
+            ],
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestAPIforAPM"
+                },
+                "Description": "My deployment to prod",
+                "StageName": {
+                    "Fn::Sub": "${APMNameParameter}-Stage-Prod"
+                },
+                "StageDescription": {
+                    "AccessLogSetting": {
+                        "DestinationArn": {
+                            "Fn::GetAtt": "MyLogGroup.Arn"
+                        },
+                        "Format": "$context.extendedRequestId $context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] \"$context.httpMethod $context.resourcePath $context.protocol\" $context.status $context.responseLength $context.requestId"
+                    }
+                }
+            }
+        },
+        "MyLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "RestAPIforAPM"
+                            },
+                            "apigw-access-logs"
+                        ]
+                    ]
+                }
+            }
+        },
+        "APIGWUsagePlan": {
+            "Type": "AWS::ApiGateway::UsagePlan",
+            "Properties": {
+                "ApiStages": [
+                    {
+                        "ApiId": {
+                            "Ref": "RestAPIforAPM"
+                        },
+                        "Stage": {
+                            "Fn::Sub": "${APMNameParameter}-Stage-Prod"
+                        }
+                    }
+                ],
+                "Description": "API Gateway throttling and quota limits on individual client API keys",
+                "Quota": {
+                    "Limit": 2000,
+                    "Period": "MONTH"
+                },
+                "Throttle": {
+                    "BurstLimit": 50,
+                    "RateLimit": 20
+                },
+                "UsagePlanName": "APIGW_Throttling_Plan"
+            },
+            "DependsOn": [
+                "APIGWDeployment"
+            ]
+        },
+        "ConfigTransformLambdaPermissionforAPIGW": {
+            "Type": "AWS::Lambda::Permission",
+            "DependsOn": [
+                "RestAPIforAPM",
+                "TransformLambdaFunction"
+            ],
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Ref": "TransformLambdaFunction"
+                },
+                "Principal": "apigateway.amazonaws.com"
+            }
+        },
+        "ConfigAuthorizerLambdaPermissionforAPIGW": {
+            "Type": "AWS::Lambda::Permission",
+            "DependsOn": [
+                "RestAPIforAPM",
+                "AuthorizerLambdaFunction"
+            ],
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Ref": "AuthorizerLambdaFunction"
+                },
+                "Principal": "apigateway.amazonaws.com"
+            }
+        }
+    }
+}
