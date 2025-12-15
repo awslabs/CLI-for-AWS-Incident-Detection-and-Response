@@ -98,7 +98,7 @@ class AlarmRecommendationService:
         self.logger.debug(f"Templates package: {self.TEMPLATES_PACKAGE}")
 
     def generate_alarm_configurations(
-        self, resources: List[ResourceArn]
+        self, resources: List[ResourceArn], suppress_warnings: bool = False
     ) -> List[Dict[str, Any]]:
         """Generate alarm configurations for given resources."""
         if not resources:
@@ -109,7 +109,7 @@ class AlarmRecommendationService:
 
         for resource in resources:
             try:
-                configurations = self._process_resource(resource)
+                configurations = self._process_resource(resource, suppress_warnings)
                 alarm_configurations.extend(configurations)
             except Exception as e:
                 self.logger.error(
@@ -120,7 +120,9 @@ class AlarmRecommendationService:
         self.logger.info(f"Generated {len(alarm_configurations)} alarm configurations")
         return alarm_configurations
 
-    def _process_resource(self, resource: ResourceArn) -> List[Dict[str, Any]]:
+    def _process_resource(
+        self, resource: ResourceArn, suppress_warnings: bool = False
+    ) -> List[Dict[str, Any]]:
         """Process a single resource and return its alarm configurations."""
         service_type = self._get_service_type_from_arn(resource.arn)
         if not service_type:
@@ -157,7 +159,9 @@ class AlarmRecommendationService:
 
         configurations = []
         for template in templates:
-            alarm_config = self._create_alarm_configuration(template, resource)
+            alarm_config = self._create_alarm_configuration(
+                template, resource, suppress_warnings
+            )
             if alarm_config:
                 configurations.append(alarm_config)
 
@@ -196,7 +200,10 @@ class AlarmRecommendationService:
             return None
 
     def _create_alarm_configuration(
-        self, template: Dict[str, Any], resource: ResourceArn
+        self,
+        template: Dict[str, Any],
+        resource: ResourceArn,
+        suppress_warnings: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """
         Create alarm configuration from template and resource with metric validation.
@@ -328,10 +335,11 @@ class AlarmRecommendationService:
                             self.validation_stats["non_native_skipped"] += 1
 
                         # Log for debugging
-                        self.logger.warning(
-                            f"Skipping alarm '{template.get('name')}' - "
-                            f"Metric '{metric_name}' not found in namespace '{namespace}'"
-                        )
+                        if not suppress_warnings:
+                            self.logger.warning(
+                                f"Skipping alarm '{template.get('name')}' - "
+                                f"Metric '{metric_name}' not found in namespace '{namespace}'"
+                            )
                         return None
                     else:
                         # Track validated metric
@@ -591,21 +599,15 @@ class AlarmRecommendationService:
                     parsed_arn.resource_type == "loadbalancer"
                     and "loadbalancer" in extraction_rules
                 ):
-                    # Handle different ALB/ELB resource formats
+                    # CloudWatch ALB metrics require full dimension: app/name/id or name for CLB
                     if resource.startswith("loadbalancer/"):
-                        # For loadbalancer/ prefix:
-                        # name is at index 2 for 3+ parts, index 1 for 2 parts
-                        # Examples: loadbalancer/app/my-alb/id -> my-alb, loadbalancer/name -> name
-                        name_index = 2 if len(resource_parts) >= 3 else 1
+                        # Remove loadbalancer/ prefix: loadbalancer/app/my-alb/id -> app/my-alb/id
+                        identifiers[extraction_rules["loadbalancer"]] = "/".join(
+                            resource_parts[1:]
+                        )
                     else:
-                        # For ARN format: name is at index 1 for 2+ parts, index 0 for single part
-                        # Examples: app/my-alb/id -> my-alb, type/name -> name, my-clb -> my-clb
-                        name_index = 1 if len(resource_parts) >= 2 else 0
-
-                    if name_index < len(resource_parts):
-                        identifiers[extraction_rules["loadbalancer"]] = resource_parts[
-                            name_index
-                        ]
+                        # Already in correct format: app/my-alb/id or my-clb
+                        identifiers[extraction_rules["loadbalancer"]] = resource
         elif service == "medialive":
             if (
                 hasattr(parsed_arn, "resource_type")
