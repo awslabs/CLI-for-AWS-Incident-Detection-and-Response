@@ -23,7 +23,7 @@ class FeatureFlags:
 
     # Feature flag configuration
     _FLAGS: Dict[Feature, Stage] = {
-        Feature.MVP: Stage.DEV,
+        Feature.MVP: Stage.GA,
     }
     # Configuration per feature per stage
     _FEATURE_CONFIGS = {
