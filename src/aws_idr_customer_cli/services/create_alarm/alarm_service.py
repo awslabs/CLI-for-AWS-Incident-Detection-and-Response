@@ -491,9 +491,10 @@ class AlarmService:
 
         for resource_arn_str, resource_alarms in alarms_by_resource.items():
             # Generate configs once per resource instead of once per alarm
+            # Suppress warnings to avoid duplicate messages (already shown in step 8)
             alarm_configs = (
                 self.alarm_recommendation_service.generate_alarm_configurations(
-                    [resource_alarms[0].resource_arn]
+                    [resource_alarms[0].resource_arn], suppress_warnings=True
                 )
             )
 

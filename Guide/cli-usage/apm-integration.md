@@ -59,6 +59,7 @@ For detailed resource information, see [Appendix - APM Integrations](appendix.md
 **Prerequisites:**
 * None (stack creates all resources)
 * APM tool must support HTTPS webhooks with custom headers
+* APM tool must be able to send JSON payloads in the required format
 
 **Resources Created:**
 * API Gateway REST API with HTTPS endpoint
@@ -71,9 +72,41 @@ For detailed resource information, see [Appendix - APM Integrations](appendix.md
 
 For detailed resource information, see [Appendix - APM Integrations](appendix.md#apm-integrations).
 
-**Post-Deployment:** After stack deployment, you must configure your APM tool with:
-* Webhook URL (from stack outputs)
-* Authentication token (from Secrets Manager)
+**Post-Deployment Configuration:** After stack deployment, you must configure your APM tool with the following:
+
+* **Webhook URL** (from stack outputs)
+  * Important: Use the complete URL including the resource path: `https://{api-id}.execute-api.{region}.amazonaws.com/{stage}/APIGWResourcesforAPM`
+* **Authentication Header**
+  * Header name: `authorizationToken`
+  * Token value: Retrieved from AWS Secrets Manager (provided in stack outputs)
+* **Request Format**
+  * Method: POST
+  * Content-Type: application/json
+  * Body structure must include a `detail` object with your alert data
+
+**Testing Your Integration**
+
+Use this curl command template to verify your configuration:
+
+```
+curl -X POST https://{your-api-gateway-url}/APIGWResourcesforAPM \
+  -H "authorizationToken: {your-token-from-secrets-manager}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "detail": {
+      "ProblemTitle": "Test Alert from APM",
+      "State": "OPEN",
+      "ProblemID": "TEST-12345",
+      "ImpactedEntity": "test-service",
+      "Severity": "ERROR"
+    }
+  }'
+```
+
+**Troubleshooting:**
+* **403 Error:** Authentication issue - verify your token and header name
+* **400 Error:** Authentication successful, but data format issue - check your JSON payload structure includes the detail object
+* **404 Error:** Incorrect URL - ensure you're including the full path with /APIGWResourcesforAPM
 
 **More details:** [IDR Webhooks Integration](https://docs.aws.amazon.com/IDR/latest/userguide/idr-ingesting-alarms-using-webhooks.html)
 
