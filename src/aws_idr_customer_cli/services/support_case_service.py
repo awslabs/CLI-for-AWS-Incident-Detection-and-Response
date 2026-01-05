@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
 
 from injector import inject
 
@@ -237,11 +237,36 @@ class SupportCaseService:
                 return str(case_id)
         return ""
 
-    def update_case_with_attachment_set(self, session_id: str, case_id: str) -> None:
-        """Update existing support case with new attachment set
+    def is_case_resolved(self, case_id: str) -> bool:
+        """Check if a support case is resolved/closed.
+
+        Args:
+            case_id: The AWS Support case ID to check.
+
+        Returns:
+            True if the case status is 'resolved', False otherwise.
+        """
+        try:
+            case_details = self.describe_case(case_id)
+            status = str(case_details.get("status", "")).lower()
+            return status == "resolved"
+        except Exception as e:
+            self.logger.warning(f"Could not check case status for {case_id}: {e}")
+            return False  # Safe default to avoid blocking workflow
+
+    def update_case_with_attachment_set(
+        self, session_id: str, case_id: str
+    ) -> Optional[str]:
+        """Update existing support case with new attachment set.
+
         Args:
             session_id: Session ID for the workload
             case_id: The AWS Support case ID to update.
+
+        Returns:
+            The case_id if update was successful, None if case is resolved/closed
+            (indicating caller should create a new case instead).
+
         Raises:
             ValueError: If case_id is empty or invalid
             AlarmIngestionValidationError: If alarm ingestion data is invalid
@@ -250,6 +275,13 @@ class SupportCaseService:
         if not case_id or not case_id.strip():
             self.logger.error("Case ID is required for update")
             raise ValueError("Case ID cannot be empty")
+
+        # Check if case is resolved - if so, return None to signal caller to create new case
+        if self.is_case_resolved(case_id):
+            self.logger.info(
+                f"Case {case_id} is resolved. Returning None to signal new case needed."
+            )
+            return None
 
         # Determine command type from progress tracker
         file_cache = self.file_cache_service.file_cache
@@ -292,6 +324,8 @@ class SupportCaseService:
         except Exception as e:
             self.logger.error(f"Error updating case {case_id}: {str(e)}")
             raise
+
+        return case_id
 
     def _get_effective_stage(self) -> Stage:
         """Get the effective stage for feature configuration lookup.

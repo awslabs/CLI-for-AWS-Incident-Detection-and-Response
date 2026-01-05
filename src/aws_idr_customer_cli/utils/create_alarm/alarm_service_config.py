@@ -54,6 +54,7 @@ class AwsServices(Enum):
     NETWORKFIREWALL = "networkfirewall"
     NLB = "nlb"
     ROUTE53 = "route53"
+    ROUTE53RESOLVER = "route53resolver"
     TRANSITGATEWAY = "transitgateway"
     VPN = "vpn"
 
@@ -202,7 +203,12 @@ AWS_SERVICE_CONFIG: Dict[AwsServices, Dict[str, Any]] = {
     AwsServices.ROUTE53: {
         "template_file": "idr_alarm_templates/route53.yaml",
         "description": "Amazon Route 53",
-        "arn_patterns": ["hostedzone", "healthcheck"],
+        "arn_patterns": ["healthcheck"],
+    },
+    AwsServices.ROUTE53RESOLVER: {
+        "template_file": "idr_alarm_templates/route53resolver.yaml",
+        "description": "Amazon Route 53 Resolver",
+        "arn_patterns": ["resolver-endpoint"],
     },
     AwsServices.TRANSITGATEWAY: {
         "template_file": "idr_alarm_templates/transitgateway.yaml",
@@ -322,8 +328,10 @@ ARN_EXTRACTION_RULES: Dict[AwsServices, Dict[str, str]] = {
         "virtualinterface": "virtual_interface_id",
     },
     AwsServices.ROUTE53: {
-        "hostedzone": "hosted_zone_id",
         "healthcheck": "health_check_id",
+    },
+    AwsServices.ROUTE53RESOLVER: {
+        "resolver-endpoint": "endpoint_id",
     },
     AwsServices.TRANSITGATEWAY: {
         "transit-gateway": "transit_gateway_id",
