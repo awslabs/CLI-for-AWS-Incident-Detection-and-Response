@@ -31,9 +31,7 @@ from aws_idr_customer_cli.utils.validation.validator import Validate
 
 # Constants
 SNS_TOPIC_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
-EVENTBRIDGE_PARTNER_BUS_PATTERN = re.compile(
-    r"^aws\.partner/[a-zA-Z0-9.-]+/\d+/[a-zA-Z0-9_-]+$"
-)
+EVENTBRIDGE_PARTNER_BUS_PATTERN = re.compile(r"^aws\.partner/[^/]+/.+$")
 DEFAULT_MAX_RETRIES = 1
 
 
@@ -139,7 +137,8 @@ def validate_eventbridge_partner_bus_format(bus_name: str, selected_apm: str) ->
     if not EVENTBRIDGE_PARTNER_BUS_PATTERN.match(clean_name):
         raise ValidationError(
             f"The Partner Event Bus name '{clean_name}' doesn't match the expected format. "
-            f"Please use: aws.partner/{selected_apm}.com/123456789012/my-alerts"
+            f"Expected format: aws.partner/<provider_domain>/<bus_identifier> "
+            f"(e.g., aws.partner/datadog.com/my-bus or aws.partner/newrelic.com/123456/my-bus)"
         )
 
     # Validate that the bus name contains a supported provider domain

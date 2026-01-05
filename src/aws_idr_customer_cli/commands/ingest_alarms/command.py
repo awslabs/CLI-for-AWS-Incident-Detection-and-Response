@@ -20,6 +20,7 @@ from aws_idr_customer_cli.services.non_interactive_alarm_ingestion_service impor
 )
 from aws_idr_customer_cli.services.support_case_service import SupportCaseService
 from aws_idr_customer_cli.utils.constants import MOCK_ACCOUNT_ID
+from aws_idr_customer_cli.utils.context import set_integration_test_mode
 from aws_idr_customer_cli.utils.execution_mode import ExecutionMode, set_execution_mode
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 from aws_idr_customer_cli.utils.session.alarm_ingestion_session import (
@@ -203,6 +204,8 @@ class IngestAlarms(CommandBase):
         **kwargs: Any,
     ) -> None:
         try:
+            set_integration_test_mode(test_mode)
+
             if config:
                 set_execution_mode(ExecutionMode.NON_INTERACTIVE)
                 self._execute_from_config(config, mock_account_id)

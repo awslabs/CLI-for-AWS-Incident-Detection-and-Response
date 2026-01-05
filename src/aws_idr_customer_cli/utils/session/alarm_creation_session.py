@@ -493,36 +493,44 @@ class AlarmCreationSession(InteractiveSession):
         case_id = self._get_existing_support_case_id()
         if case_id:
             try:
-                self.support_case_service.update_case_with_attachment_set(
-                    session_id=self.session_id, case_id=case_id
+                updated_case_id = (
+                    self.support_case_service.update_case_with_attachment_set(
+                        session_id=self.session_id, case_id=case_id
+                    )
                 )
-                self.ui.display_info("✅ Support case has been updated")
-                self._display_support_case(case_id)
+                if updated_case_id:
+                    self.ui.display_info("✅ Support case has been updated")
+                    self._display_support_case(updated_case_id)
+                    return {}
+                else:
+                    # Case was resolved, fall through to create new case
+                    self.ui.display_info(
+                        f"ℹ️  Previous support case {case_id} is resolved. "
+                        "Creating a new support case..."
+                    )
             except (AlarmCreationValidationError, AlarmIngestionValidationError) as e:
                 self.ui.display_info(str(e))
                 return {}
-        else:
-            try:
-                case_id = self.support_case_service.create_case(self.session_id)
+
+        # Create new case (either no existing case or previous case was resolved)
+        try:
+            case_id = self.support_case_service.create_case(self.session_id)
+            self.submission.workload_onboard.support_case_id = case_id
+            self.ui.display_info("✅ Support case has been created")
+            self._display_support_case(case_id)
+        except SupportCaseAlreadyExistsError as e:
+            case_id = handle_duplicate_support_case_interactive(
+                ui=self.ui,
+                support_case_service=self.support_case_service,
+                session_id=self.session_id,
+                error=e,
+                workload_name=self.submission.workload_onboard.name,
+                update_prompt="Would you like to update it with your new alarms?",
+                display_case_callback=self._display_support_case,
+            )
+
+            if case_id:
                 self.submission.workload_onboard.support_case_id = case_id
-                self.ui.display_info("✅ Support case has been created")
-                self._display_support_case(case_id)
-            except SupportCaseAlreadyExistsError as e:
-
-                case_id = handle_duplicate_support_case_interactive(
-                    ui=self.ui,
-                    support_case_service=self.support_case_service,
-                    session_id=self.session_id,
-                    error=e,
-                    workload_name=self.submission.workload_onboard.name,
-                    update_prompt="Would you like to update it with your new alarms?",
-                    display_case_callback=self._display_support_case,
-                )
-
-                if case_id:
-                    self.submission.workload_onboard.support_case_id = case_id
-
-                return {}
 
         return {}
 
