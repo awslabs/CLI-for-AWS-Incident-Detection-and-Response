@@ -42,7 +42,7 @@ Select 1 if you don't want to change your resource selection (default). If you s
 
 ## Select Alarms
 
-At this step, you have already selected your AWS resources and the CLI will generate CloudWatch alarm recommendations based on these resources. For a complete list of available alarm templates, see [Appendix - IDR Alarm Recommendations](appendix.md#idr-alarm-recommendations). You can review and select the alarms you would like to create. Alarms are associated to resources. 
+At this step, you have already selected your AWS resources and the CLI will generate CloudWatch alarm recommendations based on these resources. For a complete list of available alarm templates, see [Appendix - IDR Alarm Recommendations](../appendix.md#idr-alarm-recommendations). You can review and select the alarms you would like to create. Alarms are associated to resources. 
 
 NOTE: if you get to alarm creation by running awsidr create-alarms command, then you'll first need to select the AWS resources that you want CLI to recommend alarms for. The resource selection experience for creating alarms is the same as [workload-registration](workload-registration.md). 
 
