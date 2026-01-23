@@ -1,4 +1,4 @@
-# AWS Incident Detection and Response (IDR) CLI
+# AWS Incident Detection and Response (IDR) CLI 
 
 ## Overview
 
