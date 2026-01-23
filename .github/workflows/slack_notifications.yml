@@ -1,0 +1,43 @@
+name: Slack Notifications
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  notify-pr:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    environment: slack-notifications
+    steps:
+      - name: Set action description
+        id: action-desc
+        run: |
+          case "${{ github.event.action }}" in
+            opened) echo "description=Open" >> $GITHUB_OUTPUT ;;
+            reopened) echo "description=Reopened" >> $GITHUB_OUTPUT ;;
+            synchronize) echo "description=New Revision" >> $GITHUB_OUTPUT ;;
+            *) echo "description=PR ${{ github.event.action }}" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Send PR notification to Slack
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_PR }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "action": "${{ steps.action-desc.outputs.description }}",
+              "pr_url": ${{ toJSON(github.event.pull_request.html_url) }},
+              "pr_title": ${{ toJSON(github.event.pull_request.title) }},
+              "pr_number": ${{ github.event.pull_request.number }},
+              "repo_name": ${{ toJSON(github.repository) }},
+              "author": ${{ toJSON(github.event.pull_request.user.login) }},
+              "base_branch": ${{ toJSON(github.event.pull_request.base.ref) }},
+              "head_branch": ${{ toJSON(github.event.pull_request.head.ref) }}
+            }
