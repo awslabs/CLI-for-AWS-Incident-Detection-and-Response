@@ -13,6 +13,7 @@ jobs:
   notify-pr:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
+    environment: slack-notifications
     steps:
       - name: Set action description
         id: action-desc
@@ -32,11 +33,11 @@ jobs:
           payload: |
             {
               "action": "${{ steps.action-desc.outputs.description }}",
-              "pr_url": "${{ github.event.pull_request.html_url }}",
-              "pr_title": "${{ github.event.pull_request.title }}",
-              "pr_number": "${{ github.event.pull_request.number }}",
-              "repo_name": "${{ github.repository }}",
-              "author": "${{ github.event.pull_request.user.login }}",
-              "base_branch": "${{ github.event.pull_request.base.ref }}",
-              "head_branch": "${{ github.event.pull_request.head.ref }}"
+              "pr_url": ${{ toJSON(github.event.pull_request.html_url) }},
+              "pr_title": ${{ toJSON(github.event.pull_request.title) }},
+              "pr_number": ${{ github.event.pull_request.number }},
+              "repo_name": ${{ toJSON(github.repository) }},
+              "author": ${{ toJSON(github.event.pull_request.user.login) }},
+              "base_branch": ${{ toJSON(github.event.pull_request.base.ref) }},
+              "head_branch": ${{ toJSON(github.event.pull_request.head.ref) }}
             }
