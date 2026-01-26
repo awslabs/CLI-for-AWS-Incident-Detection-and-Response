@@ -15,7 +15,9 @@
       "Effect": "Allow",
       "Action": [
         "cloudwatch:DescribeAlarms",
-        "cloudwatch:PutMetricAlarm"
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:GetMetricData"
       ],
       "Resource": "*"
     },
@@ -37,6 +39,23 @@
         "support:DescribeCases",
         "support:AddCommunicationToCase",
         "support:AddAttachmentsToSet"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ConditionalMetricValidation",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:GetFunctionConfiguration",
+        "sns:ListSubscriptionsByTopic",
+        "sns:GetSubscriptionAttributes",
+        "dynamodb:DescribeTable",
+        "rds:DescribeDBInstances",
+        "s3:ListBucketMetricsConfigurations",
+        "s3:GetBucketLocation",
+        "keyspaces:GetKeyspace",
+        "cloudfront:ListDistributions",
+        "cloudfront:GetDistribution"
       ],
       "Resource": "*"
     },

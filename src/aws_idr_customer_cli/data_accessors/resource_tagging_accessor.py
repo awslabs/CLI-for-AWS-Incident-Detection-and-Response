@@ -6,9 +6,8 @@ from mypy_boto3_resourcegroupstaggingapi.type_defs import ResourceTagMappingType
 from retry import retry
 
 from aws_idr_customer_cli.data_accessors.base_accessor import BaseAccessor
+from aws_idr_customer_cli.utils.constants import BotoServiceName
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
-
-RGTA_API = "resourcegroupstaggingapi"
 
 
 class ResourceTaggingAccessor(BaseAccessor):
@@ -27,7 +26,7 @@ class ResourceTaggingAccessor(BaseAccessor):
 
     def _get_client(self, region: str) -> Any:
         """Get client using cached factory - no instance caching needed."""
-        return self.create_client(RGTA_API, region)
+        return self.create_client(BotoServiceName.RESOURCE_GROUPS_TAGGING, region)
 
     def _batch_rgta_resource_types(
         self, resource_types: List[str], batch_size: int = 100

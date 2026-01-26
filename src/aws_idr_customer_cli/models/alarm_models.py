@@ -25,6 +25,8 @@ class AlarmRecommendation:
     tags: Dict[str, str]
     # For math expression alarms
     metrics: Optional[List[Dict[str, Any]]] = None
+    is_lambda_edge: bool = False
+    metric_region: Optional[str] = None  # Override region for alarm creation
 
     # Mapping from field names to CloudWatch API keys and display order
     _FIELD_MAPPING: ClassVar[Dict[str, Dict[str, Union[str, int]]]] = {
@@ -130,8 +132,15 @@ class AlarmRecommendation:
 
     def alarm_configuration_to_formatted_string(self) -> str:
         """Format alarm configuration details for display."""
+        # For Lambda@Edge, use metric_region (where alarm is deployed)
+        # instead of resource_arn.region (where function is defined)
+        display_region = (
+            self.metric_region
+            if self.is_lambda_edge and self.metric_region
+            else self.resource_arn.region
+        )
         details_parts = [
-            f"Region: {self.resource_arn.region}",
+            f"Region: {display_region}",
             "Alarm Configuration:",
         ]
 

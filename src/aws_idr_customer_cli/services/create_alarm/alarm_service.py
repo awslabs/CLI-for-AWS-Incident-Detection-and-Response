@@ -1,15 +1,15 @@
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
 from injector import inject
 from mypy_boto3_cloudwatch.type_defs import MetricAlarmTypeDef
 
-from aws_idr_customer_cli.clients.s3 import BotoS3Manager
 from aws_idr_customer_cli.clients.sts import BotoStsManager
 from aws_idr_customer_cli.core.interactive.ui import InteractiveUI
 from aws_idr_customer_cli.data_accessors.alarm_accessor import AlarmAccessor
+from aws_idr_customer_cli.data_accessors.s3_accessor import S3Accessor
 from aws_idr_customer_cli.exceptions import LimitExceededError
 from aws_idr_customer_cli.models.alarm_models import AlarmRecommendation
 from aws_idr_customer_cli.services.create_alarm.alarm_recommendation_service import (
@@ -44,19 +44,22 @@ class AlarmService:
         logger: CliLogger,
         alarm_recommendation_service: AlarmRecommendationService,
         sts_manager: BotoStsManager,
-        s3_manager: BotoS3Manager,
+        s3_accessor: S3Accessor,
         ui: InteractiveUI,
     ) -> None:
         self.accessor = accessor
         self.logger = logger
         self.alarm_recommendation_service = alarm_recommendation_service
         self.sts_manager = sts_manager
-        self.s3_manager = s3_manager
+        self.s3_accessor = s3_accessor
         self.ui = ui
 
     def create_alarm(self, recommendation: AlarmRecommendation) -> AlarmCreation:
         """
         Create CloudWatch alarm from recommendation object.
+
+        For Lambda@Edge alarms, uses metric_region instead of resource_arn.region
+        to ensure alarms are created in the region where metrics actually exist.
 
         Args:
             recommendation: AlarmRecommendation object containing all alarm configuration
@@ -65,7 +68,12 @@ class AlarmService:
             AlarmCreation object with creation result
         """
         alarm_name = recommendation.alarm_name
-        region = recommendation.resource_arn.region
+
+        # For Lambda@Edge, use metric_region if specified
+        if recommendation.is_lambda_edge and recommendation.metric_region:
+            region = recommendation.metric_region
+        else:
+            region = recommendation.resource_arn.region
 
         # Convert to CloudWatch API format
         recommendation_dict = recommendation.to_cloudwatch_dict()
@@ -360,6 +368,9 @@ class AlarmService:
                     alarm_type=config.get("alarm_type"),
                     tags=config.get("tags", {}),
                     metrics=template_config.get("Metrics") if has_metrics else None,
+                    # Lambda@Edge specific fields for regional alarm creation
+                    is_lambda_edge=config.get("is_lambda_edge", False),
+                    metric_region=config.get("metric_region"),
                 )
 
                 # Different validation for math expression vs simple metric alarms
@@ -410,10 +421,8 @@ class AlarmService:
         For all other resources, returns us-east-1 as the default CloudWatch region.
         """
         if S3_IDENTIFIER in resource_arn:
-            # Extract bucket name and get actual region
             bucket_name = resource_arn.split(":")[-1]
-            response = self.s3_manager.get_bucket_location(bucket_name=bucket_name)
-            return str(response)
+            return str(self.s3_accessor.get_bucket_location(bucket_name))
         else:
             return str(Region.US_EAST_1.value)
 
@@ -478,7 +487,12 @@ class AlarmService:
     def alarm_creation_objects_to_recommendations(
         self, alarms: List[AlarmCreation]
     ) -> List[AlarmRecommendation]:
-        """Convert AlarmCreation objects to AlarmRecommendations."""
+        """Convert AlarmCreation objects to AlarmRecommendations.
+
+        For Lambda@Edge alarms, extracts regions from stored alarm name suffixes
+        to avoid rescanning for metrics (which may fail if >5 minutes have passed
+        since the original scan).
+        """
         if not alarms:
             return []
 
@@ -490,11 +504,23 @@ class AlarmService:
         recommendations = []
 
         for resource_arn_str, resource_alarms in alarms_by_resource.items():
+            # Extract stored alarm names for potential cached_regions extraction
+            stored_alarm_names = [
+                alarm.alarm_configuration.alarm_name for alarm in resource_alarms
+            ]
+
+            # Extract cached regions from Lambda@Edge alarm names to avoid rescanning
+            cached_regions = self._extract_cached_regions_from_alarm_names(
+                stored_alarm_names
+            )
+
             # Generate configs once per resource instead of once per alarm
             # Suppress warnings to avoid duplicate messages (already shown in step 8)
             alarm_configs = (
                 self.alarm_recommendation_service.generate_alarm_configurations(
-                    [resource_alarms[0].resource_arn], suppress_warnings=True
+                    [resource_alarms[0].resource_arn],
+                    suppress_warnings=True,
+                    cached_regions=cached_regions,
                 )
             )
 
@@ -534,6 +560,29 @@ class AlarmService:
                 recommendations.append(recommendation)
 
         return recommendations
+
+    def _extract_cached_regions_from_alarm_names(
+        self, alarm_names: List[str]
+    ) -> Optional[List[str]]:
+        """Extract regions from Lambda@Edge alarm name suffixes.
+
+        Lambda@Edge alarm names follow pattern: IDR-Lambda-{MetricType}-{FunctionName}-{region}
+        Example: IDR-Lambda-ErrorRate-my-edge-function-us-west-2 -> us-west-2
+
+        This is used to avoid rescanning for metrics when recreating alarm
+        configurations from stored session data. The 5-minute metric lookback
+        window may have expired, but we can use the regions embedded in the
+        stored alarm names.
+
+        Args:
+            alarm_names: List of stored alarm names
+
+        Returns:
+            List of unique regions if Lambda@Edge pattern detected, None otherwise
+        """
+        processor = self.alarm_recommendation_service.lambda_edge_processor
+        regions = processor.extract_regions_from_alarm_names(alarm_names)
+        return regions if regions else None
 
     def convert_created_alarms_to_onboarding_alarms(
         self, created_alarms: List[AlarmCreation], alarm_contacts: AlarmContacts

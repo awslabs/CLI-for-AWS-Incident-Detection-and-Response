@@ -10,13 +10,24 @@ from aws_idr_customer_cli.data_accessors.apigateway_accessor import ApiGatewayAc
 from aws_idr_customer_cli.data_accessors.cloudformation_accessor import (
     CloudFormationAccessor,
 )
+from aws_idr_customer_cli.data_accessors.cloudfront_accessor import (
+    CloudFrontAccessor,
+)
+from aws_idr_customer_cli.data_accessors.cloudwatch_metrics_accessor import (
+    CloudWatchMetricsAccessor,
+)
+from aws_idr_customer_cli.data_accessors.dynamodb_accessor import DynamoDbAccessor
 from aws_idr_customer_cli.data_accessors.eventbridge_accessor import (
     EventBridgeAccessor,
 )
+from aws_idr_customer_cli.data_accessors.keyspaces_accessor import KeyspacesAccessor
+from aws_idr_customer_cli.data_accessors.lambda_accessor import LambdaAccessor
 from aws_idr_customer_cli.data_accessors.logs_accessor import LogsAccessor
+from aws_idr_customer_cli.data_accessors.rds_accessor import RdsAccessor
 from aws_idr_customer_cli.data_accessors.resource_tagging_accessor import (
     ResourceTaggingAccessor,
 )
+from aws_idr_customer_cli.data_accessors.s3_accessor import S3Accessor
 from aws_idr_customer_cli.data_accessors.sns_accessor import SnsAccessor
 from aws_idr_customer_cli.data_accessors.support_case_accessor import (
     SupportCaseAccessor,
@@ -61,6 +72,17 @@ class AccessorsModule(Module):
 
     @singleton
     @provider
+    def provide_cloudwatch_metrics_accessor(
+        self, logger: CliLogger
+    ) -> CloudWatchMetricsAccessor:
+        """Provide AWS CloudWatch metrics accessor."""
+
+        return CloudWatchMetricsAccessor(
+            logger=logger, client_factory=create_aws_client
+        )
+
+    @singleton
+    @provider
     def provide_support_accessor(
         self, logger: CliLogger, client: SupportClient
     ) -> SupportCaseAccessor:
@@ -96,3 +118,39 @@ class AccessorsModule(Module):
     def provide_logs_accessor(self, logger: CliLogger) -> LogsAccessor:
         """Provide AWS CloudWatch Logs accessor."""
         return LogsAccessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_cloudfront_accessor(self, logger: CliLogger) -> CloudFrontAccessor:
+        """Provide AWS CloudFront accessor."""
+        return CloudFrontAccessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_lambda_accessor(self, logger: CliLogger) -> LambdaAccessor:
+        """Provide AWS Lambda accessor."""
+        return LambdaAccessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_dynamodb_accessor(self, logger: CliLogger) -> DynamoDbAccessor:
+        """Provide AWS DynamoDB accessor."""
+        return DynamoDbAccessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_rds_accessor(self, logger: CliLogger) -> RdsAccessor:
+        """Provide AWS RDS accessor."""
+        return RdsAccessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_s3_accessor(self, logger: CliLogger) -> S3Accessor:
+        """Provide AWS S3 accessor."""
+        return S3Accessor(logger=logger, client_factory=create_aws_client)
+
+    @singleton
+    @provider
+    def provide_keyspaces_accessor(self, logger: CliLogger) -> KeyspacesAccessor:
+        """Provide AWS Keyspaces accessor."""
+        return KeyspacesAccessor(logger=logger, client_factory=create_aws_client)

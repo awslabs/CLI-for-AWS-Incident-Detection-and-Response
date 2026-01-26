@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List
 
 from aws_idr_customer_cli.clients.ec2 import BotoEc2Manager
 from aws_idr_customer_cli.exceptions import ValidationError
+from aws_idr_customer_cli.utils.region_utils import get_valid_regions
 
 EQUAL_TO = "="
 PIPE = "|"
@@ -273,7 +274,7 @@ class Validate:
             raise ValidationError("At least one valid region is required")
 
         # Get all valid regions in one API call
-        valid_regions = self.get_valid_regions()
+        valid_regions = get_valid_regions()
 
         # Validate all regions against the cached list
         validated_regions = []
@@ -301,18 +302,13 @@ class Validate:
 
         return validated_regions
 
-    def get_valid_regions(self) -> List[str]:
-        regions = self.ec2_manager.get_available_regions()
-        return list(regions)
-
     def _check_aws_region_exists(self, region: str) -> None:
-        """Check if AWS region exists by querying AWS API."""
-
-        valid_regions = self.get_valid_regions()
+        """Check if AWS region exists using cached region list."""
+        valid_regions = get_valid_regions()
 
         if region not in valid_regions:
             suggestions = difflib.get_close_matches(
-                region, list(valid_regions), n=3, cutoff=0.6
+                region, valid_regions, n=3, cutoff=0.6
             )
 
             error_msg = f"AWS region '{region}' does not exist."

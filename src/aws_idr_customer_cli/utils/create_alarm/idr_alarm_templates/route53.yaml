@@ -1,0 +1,35 @@
+service_name: "Route53"
+
+templates:
+  - name: "IDR-Route53-HealthCheckStatus"
+    service: "Route53"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors health check status to detect endpoint failures"
+    configuration:
+      AlarmName: "IDR-Route53-HealthCheckStatus-${health_check_id}"
+      MetricName: "HealthCheckStatus"
+      Namespace: "AWS/Route53"
+      Statistic: "Minimum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1.0
+      ComparisonOperator: "LessThanThreshold"
+      TreatMissingData: "breaching"
+      Dimensions: [
+        {
+          Name: "HealthCheckId",
+          Value: "${health_check_id}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "Route53"
+      }
+    ]

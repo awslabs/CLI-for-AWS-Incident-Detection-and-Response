@@ -1,6 +1,5 @@
 import copy
 import importlib.resources
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -11,7 +10,17 @@ from injector import inject
 
 from aws_idr_customer_cli.core.interactive.ui import InteractiveUI
 from aws_idr_customer_cli.data_accessors.apigateway_accessor import ApiGatewayAccessor
+from aws_idr_customer_cli.data_accessors.cloudwatch_metrics_accessor import (
+    CloudWatchMetricsAccessor,
+)
+from aws_idr_customer_cli.services.create_alarm.lambda_edge_detection_service import (
+    LambdaEdgeDetectionService,
+)
+from aws_idr_customer_cli.services.create_alarm.lambda_edge_processor import (
+    LambdaEdgeProcessor,
+)
 from aws_idr_customer_cli.services.file_cache.data import ResourceArn
+from aws_idr_customer_cli.utils.constants import MetricType
 from aws_idr_customer_cli.utils.create_alarm.alarm_service_config import (
     AwsServices,
     ProjectDirectories,
@@ -25,14 +34,6 @@ from aws_idr_customer_cli.utils.log_handlers import CliLogger
 REQUIRED_TEMPLATE_FIELDS = ["name", "configuration", "description", "alarm_type"]
 
 
-class MetricType(str, Enum):
-    """Metric type classification for alarm templates."""
-
-    NATIVE = "NATIVE"
-    CONDITIONAL = "CONDITIONAL"
-    NON_NATIVE = "NON-NATIVE"
-
-
 class AlarmRecommendationService:
     """Service for loading and processing alarm templates for create-alarms command integration."""
 
@@ -42,6 +43,9 @@ class AlarmRecommendationService:
         logger: CliLogger,
         namespace_validator: MetricNamespaceValidator,
         apigateway_accessor: ApiGatewayAccessor,
+        lambda_edge_detection_service: LambdaEdgeDetectionService,
+        metrics_accessor: CloudWatchMetricsAccessor,
+        lambda_edge_processor: LambdaEdgeProcessor,
         ui: InteractiveUI,
     ) -> None:
         """
@@ -72,11 +76,15 @@ class AlarmRecommendationService:
         Args:
             logger: CLI logger instance
             namespace_validator: Validator for metric namespace and existence checks
+            lambda_edge_detection_service: Service for detecting Lambda@Edge functions
             ui: Interactive UI for customer-facing messages
         """
         self.logger = logger
         self.namespace_validator = namespace_validator
         self.apigateway_accessor = apigateway_accessor
+        self.lambda_edge_detection_service = lambda_edge_detection_service
+        self.metrics_accessor = metrics_accessor
+        self.lambda_edge_processor = lambda_edge_processor
         self.ui = ui
         self.TEMPLATES_PACKAGE = (
             "aws_idr_customer_cli.utils.create_alarm.idr_alarm_templates"
@@ -98,9 +106,23 @@ class AlarmRecommendationService:
         self.logger.debug(f"Templates package: {self.TEMPLATES_PACKAGE}")
 
     def generate_alarm_configurations(
-        self, resources: List[ResourceArn], suppress_warnings: bool = False
+        self,
+        resources: List[ResourceArn],
+        suppress_warnings: bool = False,
+        cached_regions: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        """Generate alarm configurations for given resources."""
+        """Generate alarm configurations for given resources.
+
+        Args:
+            resources: List of ResourceArn objects to generate alarms for
+            suppress_warnings: Whether to suppress warning messages
+            cached_regions: Optional list of regions from previously stored alarm
+                names. Used for Lambda@Edge to skip metric scanning when recreating
+                alarm configurations from stored session data.
+
+        Returns:
+            List of alarm configuration dictionaries
+        """
         if not resources:
             self.logger.warning("No resources provided for alarm generation")
             return []
@@ -109,7 +131,9 @@ class AlarmRecommendationService:
 
         for resource in resources:
             try:
-                configurations = self._process_resource(resource, suppress_warnings)
+                configurations = self._process_resource(
+                    resource, suppress_warnings, cached_regions
+                )
                 alarm_configurations.extend(configurations)
             except Exception as e:
                 self.logger.error(
@@ -121,13 +145,34 @@ class AlarmRecommendationService:
         return alarm_configurations
 
     def _process_resource(
-        self, resource: ResourceArn, suppress_warnings: bool = False
+        self,
+        resource: ResourceArn,
+        suppress_warnings: bool = False,
+        cached_regions: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        """Process a single resource and return its alarm configurations."""
+        """Process a single resource and return its alarm configurations.
+
+        Args:
+            resource: ResourceArn to process
+            suppress_warnings: Whether to suppress warning messages
+            cached_regions: Optional cached regions for Lambda@Edge
+
+        Returns:
+            List of alarm configuration dictionaries
+        """
         service_type = self._get_service_type_from_arn(resource.arn)
         if not service_type:
             self.logger.warning(f"Unsupported service for resource: {resource.arn}")
             return []
+
+        # Check if this is a Lambda@Edge function
+        if (
+            service_type == "lambda"
+            and self.lambda_edge_detection_service.is_lambda_edge_function(resource.arn)
+        ):
+            return self._process_lambda_edge_resource(
+                resource, suppress_warnings, cached_regions
+            )
 
         templates = self.get_templates_for_service(service_type)
         if not templates:
@@ -166,6 +211,38 @@ class AlarmRecommendationService:
                 configurations.append(alarm_config)
 
         return configurations
+
+    def _process_lambda_edge_resource(
+        self,
+        resource: ResourceArn,
+        suppress_warnings: bool = False,
+        cached_regions: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Process Lambda@Edge function using the dedicated processor.
+
+        Delegates to LambdaEdgeProcessor for all Lambda@Edge specific logic.
+
+        Args:
+            resource: ResourceArn for Lambda@Edge function
+            suppress_warnings: Whether to suppress warning messages
+            cached_regions: Optional list of regions from previously stored alarm
+                names. When provided, skips metric scanning and uses these regions
+                directly for alarm generation.
+
+        Returns:
+            List of alarm configurations (one set per region with metrics)
+        """
+        templates = self.get_templates_for_service("lambda")
+        return cast(
+            List[Dict[str, Any]],
+            self.lambda_edge_processor.process_lambda_edge_resource(
+                resource=resource,
+                templates=templates,
+                create_alarm_config_fn=self._create_alarm_configuration,
+                suppress_warnings=suppress_warnings,
+                cached_regions=cached_regions,
+            ),
+        )
 
     def _get_service_type_from_arn(self, arn: str) -> Optional[str]:
         """Extract and map service type from ARN using optimized config."""
@@ -327,6 +404,8 @@ class AlarmRecommendationService:
                         metric_name=metric_name,
                         dimensions=dimensions,
                         region=resource.region,
+                        metric_type=metric_type,
+                        resource_arn=resource.arn,
                     ):
                         # Track skipped metric
                         if metric_type == MetricType.CONDITIONAL.value:

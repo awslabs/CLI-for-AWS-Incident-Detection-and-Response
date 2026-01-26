@@ -14,21 +14,42 @@ You run the IDR CLI in the CloudShell. We also currently support Linux, Ubuntu, 
 1. AmazonEC2ReadOnlyAccess
 2. AWSSupportAccess
 3. CloudWatchFullAccess
-4. CloudFormationAccess
-5. EventBridgeAccess
-6. SNSAccess
-7. IAMFullAccess (For Service Linked Role creation)
-8. ResourceGroupsandTagEditorReadOnlyAccess
-9. AWSCloudShellFullAccess (needed if you execute from cloudshell)
+4. AWSCloudFormationFullAccess
+5. AmazonEventBridgeFullAccess
+6. AmazonSNSFullAccess
+7. AWSLambda_FullAccess
+8. IAMFullAccess (For Service Linked Role creation)
+9. ResourceGroupsandTagEditorReadOnlyAccess
+10. AWSCloudShellFullAccess (needed if you execute from cloudshell)
+11. AmazonDynamoDBReadOnlyAccess (recommended if onboarding DynamoDB tables)
+12. AmazonKeyspacesReadOnlyAccess (recommended if onboarding Keyspaces)
+13. AmazonS3ReadOnlyAccess (recommended if onboarding S3 Buckets)
+14. AmazonRDSReadOnlyAccess (recommended if onboarding RDS Databases)
 ```
 
-**Additional S3 Permissions:**
+**Note: Conditional Metric Validation Permissions (11-14)**
 
-You will also need to grant permissions for the CLI to get all S3 bucket locations if you plan on onboarding your S3 resources:
+For improved alarm creation accuracy, the CLI can validate whether conditional metrics (like DLQ metrics, replica lag, etc.) are available for your resources. Additionally, for Lambda functions, the CLI can detect Lambda@Edge deployments and create region-specific alarms. These permissions are recommended if you plan on onboarding the following resources:
 
 ```
-s3:GetBucketLocation
+lambda:GetFunctionConfiguration    # Validate Lambda DLQ configuration
+sns:ListSubscriptionsByTopic       # Validate SNS subscription DLQ/filter policies
+sns:GetSubscriptionAttributes      # Validate SNS subscription attributes
+dynamodb:DescribeTable             # Validate DynamoDB global table status
+rds:DescribeDBInstances            # Validate RDS read replica status
+s3:GetBucketLocation               # Get all S3 bucket locations
+s3:ListBucketMetricsConfigurations # Validate S3 request metrics configuration
+keyspaces:GetKeyspace              # Validate Keyspaces multi-region replication
+cloudfront:ListDistributions       # Detect Lambda@Edge associations with CloudFront
+cloudfront:GetDistribution         # Retrieve Lambda@Edge configuration from distributions
+cloudwatch:GetMetricData           # Scan regions for Lambda@Edge metrics
 ```
+
+Without these permissions, the CLI will:
+- Skip conditional alarms for resources if there is no data for corresponding metrics in the last 14 days
+- **Lambda@Edge behavior:**
+  - Without `cloudfront:ListDistributions` / `cloudfront:GetDistribution`: Treat Lambda@Edge functions as regular Lambda functions (creating alarms only in us-east-1 instead of all regions where the function executes)
+  - Without `cloudwatch:GetMetricData`: Skip Lambda@Edge regional alarm creation entirely (cannot determine which regions have metrics)
 
 ## Option 2: Custom Policy (Least Privilege)
 
