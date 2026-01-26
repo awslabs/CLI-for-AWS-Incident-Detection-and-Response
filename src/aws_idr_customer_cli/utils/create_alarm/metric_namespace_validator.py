@@ -2,7 +2,13 @@ from typing import Dict, List
 
 from injector import inject
 
-from aws_idr_customer_cli.data_accessors.alarm_accessor import AlarmAccessor
+from aws_idr_customer_cli.data_accessors.cloudwatch_metrics_accessor import (
+    CloudWatchMetricsAccessor,
+)
+from aws_idr_customer_cli.utils.constants import MetricType
+from aws_idr_customer_cli.utils.create_alarm.conditional_metric_validator import (
+    ConditionalMetricValidator,
+)
 
 
 class MetricNamespaceValidator:
@@ -16,8 +22,13 @@ class MetricNamespaceValidator:
     }
 
     @inject
-    def __init__(self, alarm_accessor: AlarmAccessor) -> None:
-        self.alarm_accessor = alarm_accessor
+    def __init__(
+        self,
+        metrics_accessor: CloudWatchMetricsAccessor,
+        conditional_validator: ConditionalMetricValidator,
+    ) -> None:
+        self.metrics_accessor = metrics_accessor
+        self.conditional_validator = conditional_validator
         self._namespace_cache: Dict[str, bool] = {}
         self._all_ci_namespaces = frozenset(
             namespace
@@ -46,7 +57,7 @@ class MetricNamespaceValidator:
             return self._namespace_cache[cache_key]
 
         try:
-            metrics = self.alarm_accessor.list_metrics_by_namespace(namespace, region)
+            metrics = self.metrics_accessor.list_metrics_by_namespace(namespace, region)
             exists = len(metrics) > 0
             self._namespace_cache[cache_key] = exists
             return exists
@@ -81,75 +92,50 @@ class MetricNamespaceValidator:
         metric_name: str,
         dimensions: List[Dict[str, str]],
         region: str,
+        metric_type: str,
+        resource_arn: str,
     ) -> bool:
         """
-        Check if specific CloudWatch metric exists with given dimensions.
+        Check if specific CloudWatch metric exists.
 
-        This method validates metric existence for CONDITIONAL and NON-NATIVE metrics only.
-        NATIVE metrics (standard AWS service metrics) always exist and skip this validation.
-
-        Metric Classification:
-        - NATIVE: Standard AWS service metrics that always exist (e.g., Lambda Invocations,
-          EC2 CPUUtilization). These metrics are published automatically by AWS services.
-        - CONDITIONAL: Metrics that only exist when specific features are enabled
-          (e.g., SNS DeadLetterErrors requires DLQ configuration, Lambda message filtering
-          metrics require filters to be configured).
-        - NON-NATIVE: Metrics from optional monitoring solutions (e.g., EKS Container Insights
-          metrics like pod_cpu_utilization, which require Container Insights to be enabled).
-
-        Design Decisions:
-        - Fail-safe: Returns False on any exception to prevent alarm creation failures
-        - Performance: NATIVE metrics skip validation entirely (67% reduction in API calls)
-        - Dimensions: Exact match required - metric must exist with specified dimensions
+        Routes validation based on metric_type:
+        - CONDITIONAL: Validates via both list_metrics API and resource configuration check
+        - NON-NATIVE: Validates via CloudWatch list_metrics API
 
         Args:
-            namespace: CloudWatch namespace (e.g., "AWS/Lambda", "ContainerInsights")
-            metric_name: Metric name (e.g., "DeadLetterErrors", "pod_cpu_utilization")
-            dimensions: List of dimension filters [{"Name": "FunctionName", "Value": "my-func"}]
-            region: AWS region code (e.g., "us-west-2")
+            namespace: CloudWatch namespace
+            metric_name: Metric name
+            dimensions: List of dimension filters
+            region: AWS region code
+            metric_type: "CONDITIONAL" or "NON-NATIVE"
+            resource_arn: Resource ARN for CONDITIONAL validation
 
         Returns:
-            bool: True if metric exists with specified dimensions, False otherwise
-
-        Examples:
-            >>> # CONDITIONAL metric - SNS DLQ (only exists if DLQ configured)
-            >>> validator.validate_metric_exists(
-            ...     namespace="AWS/SNS",
-            ...     metric_name="NumberOfMessagesPublishedToDLQ",
-            ...     dimensions=[{"Name": "TopicName", "Value": "my-topic"}],
-            ...     region="us-west-2"
-            ... )
-            False  # DLQ not configured
-
-            >>> # NON-NATIVE metric - EKS Container Insights
-            >>> validator.validate_metric_exists(
-            ...     namespace="ContainerInsights",
-            ...     metric_name="pod_cpu_utilization",
-            ...     dimensions=[
-            ...         {"Name": "ClusterName", "Value": "my-cluster"},
-            ...         {"Name": "Namespace", "Value": "default"}
-            ...     ],
-            ...     region="us-west-2"
-            ... )
-            True  # Container Insights enabled
-
-        Note:
-            - Uses CloudWatch list_metrics API with exact namespace, metric, and dimension filters
-            - Returns False on API errors (logged but not raised)
+            bool: True if metric/config exists, False otherwise
         """
         try:
             # Call CloudWatch API
-            client = self.alarm_accessor.get_client(region=region)
+            client = self.metrics_accessor.get_client(region=region)
             response = client.list_metrics(
-                Namespace=namespace, MetricName=metric_name, Dimensions=dimensions
+                Namespace=namespace,
+                MetricName=metric_name,
+                Dimensions=dimensions,
             )
 
-            # Metric exists if we get any results
-            return len(response.get("Metrics", [])) > 0
+            if metric_type == MetricType.CONDITIONAL.value and not response.get(
+                "Metrics"
+            ):
+                return bool(
+                    self.conditional_validator.validate_metric_exists(
+                        metric_name, resource_arn, region
+                    )
+                )
+            else:
+                return len(response.get("Metrics", [])) > 0
 
         except Exception as e:
             # Log error and return False
-            self.alarm_accessor.logger.error(
+            self.metrics_accessor.logger.error(
                 f"Error checking metric {metric_name} in {namespace}: {str(e)}"
             )
             return False

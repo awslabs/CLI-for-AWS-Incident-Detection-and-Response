@@ -16,9 +16,8 @@ from aws_idr_customer_cli.utils.apm.apm_constants import (
     STACK_POLL_INTERVAL,
     StackStatus,
 )
+from aws_idr_customer_cli.utils.constants import BotoServiceName
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
-
-CLOUDFORMATION_SERVICE_NAME = "cloudformation"
 
 ACTIVE_STACK_STATUSES = [
     "CREATE_IN_PROGRESS",
@@ -51,7 +50,7 @@ class CloudFormationAccessor(BaseAccessor):
 
     def _get_client(self, region: str) -> Any:
         """Get CloudFormation client for specified region using cached factory."""
-        return self.create_client(CLOUDFORMATION_SERVICE_NAME, region)
+        return self.create_client(BotoServiceName.CLOUDFORMATION, region)
 
     @retry(exceptions=ClientError, tries=MAX_RETRIES, delay=1, backoff=2, logger=None)
     def list_stacks(

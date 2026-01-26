@@ -21,6 +21,7 @@ class BaseAccessor:
         "AccessDeniedException",
         "AccessDenied",
         "UnauthorizedOperation",
+        "AuthorizationError",
     }
 
     def __init__(self, logger: CliLogger, service_name: str = "AWS API") -> None:

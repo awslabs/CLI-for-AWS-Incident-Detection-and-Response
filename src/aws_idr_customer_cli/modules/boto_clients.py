@@ -4,7 +4,6 @@ from mypy_boto3_support import SupportClient
 
 from aws_idr_customer_cli.clients.ec2 import BotoEc2Manager
 from aws_idr_customer_cli.clients.iam import BotoIamManager
-from aws_idr_customer_cli.clients.s3 import BotoS3Manager
 from aws_idr_customer_cli.clients.sts import BotoStsManager
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 
@@ -38,9 +37,3 @@ class BotoClientsModule(injector.Module):
     def provide_boto_iam_client(self, logger: CliLogger) -> BotoIamManager:
         iam_client = boto3.client("iam")
         return BotoIamManager(iam_client=iam_client, logger=logger)
-
-    @injector.singleton
-    @injector.provider
-    def provide_boto_s3_client(self, logger: CliLogger) -> BotoS3Manager:
-        s3_client = boto3.client("s3", US_EAST_1)
-        return BotoS3Manager(s3_client=s3_client, logger=logger)

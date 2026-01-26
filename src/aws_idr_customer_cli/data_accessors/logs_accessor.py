@@ -6,9 +6,9 @@ from injector import inject
 from retry import retry
 
 from aws_idr_customer_cli.data_accessors.base_accessor import BaseAccessor
+from aws_idr_customer_cli.utils.constants import BotoServiceName
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 
-LOGS_SERVICE_NAME = "logs"
 DEFAULT_LOOKBACK_MINUTES = 10
 
 
@@ -26,7 +26,7 @@ class LogsAccessor(BaseAccessor):
 
     def get_client(self, region: str) -> Any:
         """Get CloudWatch Logs client for specified region."""
-        return self.create_client(LOGS_SERVICE_NAME, region)
+        return self.create_client(BotoServiceName.LOGS, region)
 
     @retry(exceptions=ClientError, tries=MAX_RETRIES, delay=1, backoff=2, logger=None)
     def get_log_events(

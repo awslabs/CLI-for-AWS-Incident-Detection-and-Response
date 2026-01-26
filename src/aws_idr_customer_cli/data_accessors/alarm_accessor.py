@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -8,11 +7,8 @@ from mypy_boto3_cloudwatch.type_defs import MetricAlarmTypeDef
 from retry import retry
 
 from aws_idr_customer_cli.data_accessors.base_accessor import BaseAccessor
+from aws_idr_customer_cli.utils.constants import BotoServiceName
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
-
-CLOUDWATCH_SERVICE_NAME = "cloudwatch"
-DEFAULT_LAMBDA_INVOCATION_LOOKBACK_MINUTES = 5
-LAMBDA_INVOCATION_METRIC_PERIOD_SECONDS = 60
 
 
 class AlarmAccessor(BaseAccessor):
@@ -29,7 +25,7 @@ class AlarmAccessor(BaseAccessor):
 
     def get_client(self, region: str) -> Any:
         """Get CloudWatch client for specified region using cached factory."""
-        return self.create_client(CLOUDWATCH_SERVICE_NAME, region)
+        return self.create_client(BotoServiceName.CLOUDWATCH, region)
 
     @retry(exceptions=ClientError, tries=MAX_RETRIES, delay=1, backoff=2, logger=None)
     def list_alarms_by_prefix(
@@ -126,92 +122,4 @@ class AlarmAccessor(BaseAccessor):
             raise
         except Exception as exception:
             self.logger.error(f"Unexpected error in create_alarm: {str(exception)}")
-            raise
-
-    @retry(
-        exceptions=ClientError, tries=MAX_RETRIES, delay=1.0, backoff=2.0, logger=None
-    )
-    def list_metrics_by_namespace(
-        self, namespace: str, region: str
-    ) -> List[Dict[str, Any]]:
-        """
-        List CloudWatch metrics for a specific namespace in specified region.
-
-        Args:
-            namespace: CloudWatch namespace to query
-            region: AWS region to query
-
-        Returns:
-            List of metrics in the namespace
-        """
-        try:
-            result = []
-            paginator = self.get_client(region).get_paginator("list_metrics")
-            for page in paginator.paginate(Namespace=namespace):
-                if "Metrics" in page:
-                    result.extend(page["Metrics"])
-
-            self.logger.info(
-                f"Found {len(result)} metrics in namespace '{namespace}' in region '{region}'"
-            )
-            return result
-
-        except ClientError as exception:
-            self._handle_error(exception, "list_metrics_by_namespace")
-            raise
-        except Exception as exception:
-            self.logger.error(
-                f"Unexpected error in list_metrics_by_namespace: {str(exception)}"
-            )
-            raise
-
-    @retry(exceptions=ClientError, tries=MAX_RETRIES, delay=1, backoff=2, logger=None)
-    def validate_invoked_lambda(
-        self,
-        function_name: str,
-        region: str,
-        lookback_minutes: int = DEFAULT_LAMBDA_INVOCATION_LOOKBACK_MINUTES,
-    ) -> bool:
-        """Validate if Lambda has been invoked recently using CloudWatch metrics."""
-        try:
-            end_time = datetime.now(timezone.utc)
-            start_time = end_time - timedelta(minutes=lookback_minutes)
-
-            response = self.get_client(region).get_metric_data(
-                MetricDataQueries=[
-                    {
-                        "Id": "invocations",
-                        "MetricStat": {
-                            "Metric": {
-                                "Namespace": "AWS/Lambda",
-                                "MetricName": "Invocations",
-                                "Dimensions": [
-                                    {"Name": "FunctionName", "Value": function_name}
-                                ],
-                            },
-                            "Period": LAMBDA_INVOCATION_METRIC_PERIOD_SECONDS,
-                            "Stat": "Sum",
-                        },
-                    }
-                ],
-                StartTime=start_time,
-                EndTime=end_time,
-            )
-
-            for result in response.get("MetricDataResults", []):
-                values = result.get("Values", [])
-                if values and sum(values) > 0:
-                    self.logger.info(f"Lambda {function_name} has recent invocations")
-                    return True
-
-            self.logger.info(f"No recent invocations for Lambda {function_name}")
-            return False
-
-        except ClientError as exception:
-            self._handle_error(exception, "validate_invoked_lambda")
-            raise
-        except Exception as exception:
-            self.logger.error(
-                f"Unexpected error in validate_invoked_lambda: {str(exception)}"
-            )
             raise

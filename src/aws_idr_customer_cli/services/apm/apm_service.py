@@ -9,9 +9,11 @@ from injector import inject
 from retry import retry
 
 from aws_idr_customer_cli.core.interactive.ui import InteractiveUI
-from aws_idr_customer_cli.data_accessors.alarm_accessor import AlarmAccessor
 from aws_idr_customer_cli.data_accessors.cloudformation_accessor import (
     CloudFormationAccessor,
+)
+from aws_idr_customer_cli.data_accessors.cloudwatch_metrics_accessor import (
+    CloudWatchMetricsAccessor,
 )
 from aws_idr_customer_cli.data_accessors.eventbridge_accessor import EventBridgeAccessor
 from aws_idr_customer_cli.data_accessors.logs_accessor import LogsAccessor
@@ -140,7 +142,7 @@ class ApmService:
         eventbridge_accessor: EventBridgeAccessor,
         sns_accessor: SnsAccessor,
         logs_accessor: LogsAccessor,
-        alarm_accessor: AlarmAccessor,
+        metrics_accessor: CloudWatchMetricsAccessor,
     ) -> None:
         self.logger = logger
         self.ui = ui
@@ -148,7 +150,7 @@ class ApmService:
         self.eventbridge_accessor = eventbridge_accessor
         self.sns_accessor = sns_accessor
         self.logs_accessor = logs_accessor
-        self.alarm_accessor = alarm_accessor
+        self.metrics_accessor = metrics_accessor
         self.template_processor = CfnTemplateProcessor(
             cfn_accessor=cloudformation_accessor
         )
@@ -506,7 +508,7 @@ class ApmService:
         limit: int,
     ) -> LambdaActivity:
         """Check for Lambda invocations and logs."""
-        has_invocations = self.alarm_accessor.validate_invoked_lambda(
+        has_invocations = self.metrics_accessor.validate_invoked_lambda(
             function_name=function_name,
             region=region,
             lookback_minutes=lookback_minutes,
