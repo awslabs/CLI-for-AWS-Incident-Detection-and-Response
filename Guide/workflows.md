@@ -144,6 +144,46 @@ awsidr ingest-alarms
 
 ---
 
+## Workflow 5: Update Existing Workload
+
+In this workflow, you request updates to an existing IDR workload configuration. This creates a support case for the IDR team to process your changes.
+
+**When to use:** Need to update contacts or add alarms to an already registered workload.
+
+**Command:**
+```
+awsidr update-workload
+```
+
+**Reference Guide:** [Update Workload](cli-usage/update-workload.md)
+
+**Update Types:**
+
+### Contacts/Escalation Update
+- Update primary contact information
+- Update escalation contact information
+- Contact details are included inline in the support case
+
+### Alarms Update
+- Add CloudWatch alarms (by tags, file, or manual ARN entry)
+- Add APM alarms (EventBridge ARN + alert identifiers)
+- Alarm data is attached as JSON for Harmony tool processing
+
+**Steps:**
+
+* Workload Name Collection
+    * Enter the name of the existing workload to update
+* Update Type Selection
+    * Choose between Contacts/Escalation or Alarms
+* Details Collection
+    * For Contacts: Collect primary & escalation contact details
+    * For Alarms: Discover/select alarms to add
+* Support Case Creation
+    * Create support case routed to IDR team
+    * CTI: Technical support | Incident Detection and Response | Workload Change Request
+
+---
+
 ## Workflow Selection Guide
 
 | Scenario | Workflow |
@@ -152,6 +192,7 @@ awsidr ingest-alarms
 | Have existing CloudWatch alarms | Workflow 2 |
 | Need to integrate APM tool | Workflow 3 |
 | Have APM alerts to onboard | Workflow 4 |
+| Update contacts or add alarms | Workflow 5 |
 
 ## See Also
 
@@ -161,6 +202,7 @@ awsidr ingest-alarms
 - [CloudWatch Alarms](cli-usage/cloudwatch-alarms.md)
 - [Alarm Ingestion](cli-usage/alarm-ingestion.md)
 - [APM Integration](cli-usage/apm-integration.md)
+- [Update Workload](cli-usage/update-workload.md)
 - [Unattended Mode](unattended-mode.md)
 - [IAM Policies](iam-policies.md)
 - [FAQ](faq.md)

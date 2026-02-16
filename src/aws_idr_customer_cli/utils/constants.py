@@ -45,6 +45,7 @@ class CommandType(str, Enum):
     ALARM_CREATION = "alarm_creation"
     ALARM_INGESTION = "alarm_ingestion"
     APM_SETUP = "apm_setup"
+    WORKLOAD_UPDATE = "workload_update"
 
 
 class MetricType(str, Enum):
@@ -59,6 +60,20 @@ class AlarmInputMethod(str, Enum):
     TAGS = "tags"
     FILE = "file"
     MANUAL = "manual"
+
+
+class UpdateType(str, Enum):
+    """Update types for update-workload command."""
+
+    CONTACTS = "contacts"
+    ALARMS = "alarms"
+
+    @property
+    def display_name(self) -> str:
+        """Display name for UI."""
+        if self == UpdateType.CONTACTS:
+            return "Contacts/Escalation"
+        return "Alarms"
 
 
 # Default AWS region

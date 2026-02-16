@@ -56,6 +56,9 @@ awsidr ingest-alarms
 
 # 4. Set up APM integration
 awsidr setup-apm
+
+# 5. Update existing workload (contacts or alarms)
+awsidr update-workload
 ```
 
 ## Common Flags
@@ -82,6 +85,7 @@ awsidr setup-apm
 - [CloudWatch Alarms](cli-usage/cloudwatch-alarms.md)
 - [Alarm Ingestion](cli-usage/alarm-ingestion.md)
 - [APM Integration](cli-usage/apm-integration.md)
+- [Update Workload](cli-usage/update-workload.md)
 - [IAM Policies](iam-policies.md)
 - [Unattended Mode](unattended-mode.md)
 - [FAQ](faq.md)

@@ -185,12 +185,16 @@ Alarms for these metrics are recommended immediately upon selection.
 These metrics only exist if you've enabled specific AWS features. The CLI validates these before recommending alarms.
 Examples:
 
-* SNS: NumberOfMessagesPublishedToDLQ (requires Dead Letter Queue)
-* SNS: NumberOfNotificationsFilteredOut (requires message filtering)
-* Lambda: DestinationDeliveryFailures (requires destinations configured)
+* SNS: NumberOfNotificationsRedrivenToDlq (requires Dead Letter Queue configured on subscriptions)
+* SNS: NumberOfNotificationsFilteredOut-* (requires filter policy on subscriptions)
+* Lambda: DeadLetterErrors (requires DLQ configured on function)
 * DynamoDB: ReplicationLatency (requires global tables)
+* RDS: ReplicaLag (requires read replica)
+* S3: TotalRequestLatency (requires request metrics enabled)
 
 Alarms are only recommended if the feature is configured in your account.
+
+For the complete list of conditional metrics and how to enable them, see [Appendix - Conditional Metrics](../appendix.md#conditional-metrics).
 
 **Non-Native Metrics (Advanced Monitoring)**
 

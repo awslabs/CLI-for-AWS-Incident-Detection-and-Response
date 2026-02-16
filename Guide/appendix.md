@@ -11,6 +11,32 @@ Cache file names are consistent with the session numbers. So in this example, yo
 
 If you find resources count to be less than expected when doing AWS Resource Discovery, it is likely because they are in the category considered as non-functional resources. The CLI will not create alarms for these resources and will not display them to you. For the complete list of functional and non-functional resources, see [functional_resource_config.py](../src/aws_idr_customer_cli/utils/resource_filtering/functional_resource_config.py).
 
+## Conditional Metrics
+
+Some CloudWatch metrics are only available when specific configurations are enabled on your AWS resources. These are called **conditional metrics**. If you see warnings during alarm creation about conditional metrics being skipped, it means the required configuration is not enabled for those resources.
+
+### Conditional Metrics Reference
+
+| AWS Service | Metric Name | Required Configuration | How to Enable |
+|-------------|-------------|------------------------|---------------|
+| DynamoDB | ReplicationLatency | Global Tables | Enable global tables for cross-region replication |
+| Keyspaces | ReplicationLatency | Multi-Region Keyspace | Create a multi-Region keyspace for replication |
+| Lambda | DeadLetterErrors | Dead Letter Queue (DLQ) | Configure a DLQ on the Lambda function |
+| RDS | ReplicaLag | Read Replica | Create a read replica for the RDS instance |
+| S3 | TotalRequestLatency | Request Metrics | Enable request metrics on the S3 bucket |
+| SNS | NumberOfNotificationsFilteredOut-* | Filter Policy | Configure a filter policy on SNS subscriptions |
+| SNS | NumberOfNotificationsRedrivenToDlq | Redrive Policy (DLQ) | Configure a redrive policy on SNS subscriptions |
+
+### Resolving Conditional Metric Warnings
+
+If you received warnings about conditional metrics during alarm creation:
+
+1. **Review the warning message** - It will indicate which metric and resource type requires additional configuration
+2. **Enable the required configuration** - Use the table above to identify what needs to be enabled
+3. **Re-run resource discovery** - After enabling the configuration, re-discover resources to include the conditional metrics
+
+**Note**: Conditional metrics are optional. If your workload doesn't use the features that generate these metrics (e.g., you don't use DynamoDB global tables), you can safely ignore the warnings.
+
 ## APM Integrations
 
 ### Integration Resources

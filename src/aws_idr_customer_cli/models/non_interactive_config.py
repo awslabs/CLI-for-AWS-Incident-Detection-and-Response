@@ -28,6 +28,7 @@ class DiscoveryConfig:
     method: DiscoveryMethod
     tags: Optional[Dict[str, str]] = None
     arns: Optional[List[str]] = None
+    regions: List[str] = field(default_factory=list)
 
 
 @dataclass_json
@@ -142,4 +143,28 @@ class AlarmIngestionConfig:
     third_party_apm: Optional[ApmConfig] = None
     options: AlarmIngestionOptionsConfig = field(
         default_factory=AlarmIngestionOptionsConfig
+    )
+
+
+@dataclass_json
+@dataclass
+class WorkloadUpdateOptionsConfig:
+    """Options for workload update process."""
+
+    dry_run: bool = False
+    output_format: OutputFormat = OutputFormat.TEXT
+
+
+@dataclass_json
+@dataclass
+class WorkloadUpdateConfig:
+    """Complete configuration for non-interactive workload update."""
+
+    workload_name: str
+    update_type: str  # "contacts" or "alarms"
+    contacts: Optional[AlarmContactsConfig] = None
+    discovery: Optional[DiscoveryConfig] = None
+    third_party_apm: Optional[ApmConfig] = None
+    options: WorkloadUpdateOptionsConfig = field(
+        default_factory=WorkloadUpdateOptionsConfig
     )

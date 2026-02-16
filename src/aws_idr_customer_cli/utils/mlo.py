@@ -392,22 +392,29 @@ class MloSelectionManager(BaseSelectionManager):
                 f'"{previous_bc}"',
             ]
 
-            choice = self.ui.select_option(
+            # Support bulk selection
+            selection = self.ui.select_multiple_with_ranges(
                 options=level_three_options,
                 message="What would you like to do?",
                 explicit_index=True,
                 max_choice_number=max_choice,
+                exclusive_choices=[deselect_all_choice + 1, go_back_choice + 1],
             )
 
-            if choice < item_count:
-                items[choice].selected = True
-            elif choice == deselect_all_choice:
-                self._deselect_all_items(item_list=items)
-            elif choice == go_back_choice:
-                self.breadcrumbs.pop()
-                break
+            should_exit = False
+            for choice in selection:
+                if choice < item_count:
+                    items[choice].selected = True
+                elif choice == deselect_all_choice:
+                    self._deselect_all_items(item_list=items)
+                elif choice == go_back_choice:
+                    should_exit = True
+                    break
 
             self.breadcrumbs.pop()
+
+            if should_exit:
+                break
 
     def _manage_all_categories(self, items: List[MloItem]) -> None:
         self._manage_detailed_item_selection(items=items)

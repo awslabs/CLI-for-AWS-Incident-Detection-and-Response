@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Dict, Optional
 
 SUPPORT_CASE_KEY = "Support Case"
+UPDATE_CASE_KEY = "Update Case"
 
 
 class Stage(Enum):
@@ -34,8 +35,15 @@ class FeatureFlags:
                     "category": "prophet-aria",
                     "issue_type": "technical",
                     "language": "en",
-                    "service_code": "service-kumo-testing-technical",  # IDR recommended testing CTI
-                }
+                    "service_code": "service-kumo-testing-technical",
+                },
+                UPDATE_CASE_KEY: {
+                    "severity": "low",
+                    "category": "prophet-aria",
+                    "issue_type": "technical",
+                    "language": "en",
+                    "service_code": "service-kumo-testing-technical",
+                },
             },
             Stage.BETA: {
                 SUPPORT_CASE_KEY: {
@@ -44,7 +52,14 @@ class FeatureFlags:
                     "issue_type": "technical",
                     "language": "en",
                     "service_code": "service-incident-detection-and-response",
-                }
+                },
+                UPDATE_CASE_KEY: {
+                    "severity": "low",
+                    "category": "workload-change-request",
+                    "issue_type": "technical",
+                    "language": "en",
+                    "service_code": "service-incident-detection-and-response",
+                },
             },
             Stage.GA: {
                 SUPPORT_CASE_KEY: {
@@ -53,7 +68,14 @@ class FeatureFlags:
                     "issue_type": "technical",
                     "language": "en",
                     "service_code": "service-incident-detection-and-response",
-                }
+                },
+                UPDATE_CASE_KEY: {
+                    "severity": "low",
+                    "category": "workload-change-request",
+                    "issue_type": "technical",
+                    "language": "en",
+                    "service_code": "service-incident-detection-and-response",
+                },
             },
         }
     }

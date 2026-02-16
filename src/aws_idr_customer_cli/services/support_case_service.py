@@ -22,6 +22,7 @@ from aws_idr_customer_cli.utils.constants import CommandType
 from aws_idr_customer_cli.utils.context import is_integration_test_mode
 from aws_idr_customer_cli.utils.feature_flags import (
     SUPPORT_CASE_KEY,
+    UPDATE_CASE_KEY,
     Feature,
     FeatureFlags,
     Stage,
@@ -113,6 +114,8 @@ class SupportCaseService:
             command_type = CommandType.ALARM_INGESTION.value
         elif submission.progress.apm_setup:
             command_type = CommandType.APM_SETUP.value
+        elif submission.progress.workload_update:
+            command_type = CommandType.WORKLOAD_UPDATE.value
         else:
             command_type = CommandType.WORKLOAD_REGISTRATION.value
         return str(command_type)
@@ -388,3 +391,118 @@ class SupportCaseService:
         service_code = cast(str, config["service_code"])
         self.logger.info(f"Using support case service_code: '{service_code}'")
         return service_code
+
+    def _get_update_case_config(self) -> Dict[str, str]:
+        """Get update case configuration for the effective stage.
+
+        Uses _get_effective_stage() which returns Stage.DEV when --test-mode
+        is enabled, routing to test CTI instead of production.
+        """
+        effective_stage = self._get_effective_stage()
+        feature_configs = FeatureFlags._FEATURE_CONFIGS.get(Feature.MVP, {})
+        stage_config = feature_configs.get(effective_stage, {})
+        return cast(Dict[str, str], stage_config.get(UPDATE_CASE_KEY, {}))
+
+    def _build_contact_details(self, submission: Optional[OnboardingSubmission]) -> str:
+        """Build contact details string for update request message."""
+        if not submission or not submission.alarm_contacts:
+            return ""
+        contacts = submission.alarm_contacts
+        p = contacts.primary_contact
+        e = contacts.escalation_contact
+        return f"""
+Updated Contact Information:
+  Primary Contact:
+    Name: {p.name}
+    Email: {p.email}
+    Phone: {p.phone or 'Not provided'}
+  Escalation Contact:
+    Name: {e.name}
+    Email: {e.email}
+    Phone: {e.phone or 'Not provided'}
+"""
+
+    def create_update_request_case(
+        self,
+        session_id: str,
+        workload_name: str,
+        update_type: str,
+    ) -> str:
+        """Create a support case for workload update request.
+
+        Args:
+            session_id: Session ID for the file cache attachment
+            workload_name: Name of the workload to update
+            update_type: Type of update (Contacts/Escalation or Alarms)
+
+        Returns:
+            str: The created support case ID
+        """
+        subject = f"AWS IDR Workload Update Request - {workload_name}"
+        file_path = self.file_cache_service.get_file_path(session_id)
+        submission = self.file_cache_service.load_file_cache(file_path=file_path)
+
+        contact_details = ""
+        if update_type == "Contacts/Escalation":
+            contact_details = self._build_contact_details(submission)
+
+        # Check for existing case
+        existing_case_id = self.get_duplicate_case_id(subject)
+        if existing_case_id:
+            self.logger.info(f"Adding follow-up to existing case {existing_case_id}")
+            self._additional_attachment_sets = []
+            attachment_set_id = self._create_json_attachment_set(file_path)
+            body = f"""Follow-up update request:
+
+Update Type: {update_type}
+{contact_details}
+See attached JSON file for complete details.
+
+Note: This request was created by the AWS IDR CLI tool."""
+            self.accessor.add_communication_to_case(
+                existing_case_id, body, attachment_set_id
+            )
+            return existing_case_id
+
+        communication_body = f"""Hello,
+
+Please process the following update request for an existing IDR workload:
+
+Workload Name: {workload_name}
+Update Type: {update_type}
+{contact_details}
+See attached JSON file for complete details.
+
+Note: This request was created by the AWS IDR CLI tool on behalf of the customer.
+
+Thanks"""
+
+        self._additional_attachment_sets = []
+        attachment_set_id = self._create_json_attachment_set(file_path)
+
+        # CTI: Technical support | Incident Detection and Response | Workload Change Request
+        update_config = self._get_update_case_config()
+        case_id = self.accessor.create_support_case(
+            subject=subject,
+            severity=str(update_config.get("severity", "low")),
+            category=str(update_config.get("category", "workload-change-request")),
+            communicationBody=communication_body,
+            issueType=str(update_config.get("issue_type", "technical")),
+            attachmentSetId=attachment_set_id,
+            language=str(update_config.get("language", "en")),
+            serviceCode=str(
+                update_config.get(
+                    "service_code", "service-incident-detection-and-response"
+                )
+            ),
+        )
+
+        for idx, additional_set_id in enumerate(
+            self._additional_attachment_sets or [], start=2
+        ):
+            self.accessor.add_communication_to_case(
+                case_id, f"Additional update data (part {idx})", additional_set_id
+            )
+
+        self.logger.info(f"Created update request case: {case_id}")
+        return str(case_id)
