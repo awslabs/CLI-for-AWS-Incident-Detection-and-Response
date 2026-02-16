@@ -56,6 +56,13 @@ from aws_idr_customer_cli.utils.workload_meta_data_collection_utils import (
 SLR_ROLE_NAME = "AWSServiceRoleForHealth_EventProcessor"
 SLR_SERVICE_NAME = "event-processor.health.amazonaws.com"
 
+# Documentation URLs
+IDR_APPENDIX_DOC_URL = (
+    "https://github.com/awslabs/CLI-for-AWS-Incident-Detection-and-Response/"
+    "blob/main/Guide/appendix.md"
+)
+IDR_CONDITIONAL_METRICS_DOC_URL = f"{IDR_APPENDIX_DOC_URL}#conditional-metrics"
+
 
 class AlarmCreationSession(InteractiveSession):
     """Alarm creation session"""
@@ -374,10 +381,20 @@ class AlarmCreationSession(InteractiveSession):
 
         if not alarm_recommendations:
             self.ui.display_warning(
-                "No alarm recommendations could be generated from the selected resources. "
-                "Returning to resource selection."
+                "No alarm recommendations could be generated from the selected resources."
             )
-            return {ACTION_KEY: ACTION_BACK}
+            self.ui.display_info(
+                "\n📚 Please review the IDR recommended alarms and supported services:"
+            )
+            self.ui.display_info(f"   {IDR_APPENDIX_DOC_URL}")
+            self.ui.display_info(
+                "\n💡 If certain metrics are not available, see the 'Conditional Metrics' "
+                "section in the appendix for required configurations."
+            )
+            self.ui.display_info("\nReturning to resource discovery...")
+            # Go back to resource discovery (step 5)
+            self.current_step = 4  # Will increment to 5 on next iteration
+            return {}
 
         result = select_alarms(
             ui=self.ui,

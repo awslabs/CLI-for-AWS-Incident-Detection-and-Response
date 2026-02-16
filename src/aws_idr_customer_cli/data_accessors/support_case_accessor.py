@@ -32,16 +32,20 @@ class SupportCaseAccessor(BaseAccessor):
     ) -> str:
         """Create AWS Support Case"""
         try:
-            response = self.client.create_case(
-                subject=subject,
-                serviceCode=serviceCode,
-                severityCode=severity,
-                categoryCode=category,
-                communicationBody=communicationBody,
-                language=language,
-                issueType=issueType,
-                attachmentSetId=attachmentSetId,
-            )
+            params: Dict[str, Any] = {
+                "subject": subject,
+                "serviceCode": serviceCode,
+                "severityCode": severity,
+                "categoryCode": category,
+                "communicationBody": communicationBody,
+                "language": language,
+                "issueType": issueType,
+            }
+            # Only include attachmentSetId if it has a value
+            if attachmentSetId:
+                params["attachmentSetId"] = attachmentSetId
+
+            response = self.client.create_case(**params)
             case_id = response.get("caseId")
             if not case_id:
                 raise ValueError(

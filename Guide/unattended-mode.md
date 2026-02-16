@@ -38,6 +38,13 @@ awsidr ingest-alarms --config <path-to-config-file.json>
 awsidr ingest-alarms --config <path-to-config-file.json>
 ```
 
+### Update Workload
+
+```
+# Non-interactive workload update
+awsidr update-workload --config <path-to-config-file.json>
+```
+
 ## Configuration File Structure
 
 ### Workload Registration Schema
@@ -191,6 +198,76 @@ Configuration files for alarm creation follow this structure:
     "create_service_linked_role": true | false,
     "create_support_case": true | false,
     "update_existing_case": true | false,
+    "output_format": "text" | "json"
+  }
+}
+```
+
+### Update Workload Schema - Contacts Update
+
+```json
+{
+  "workload_name": "string",
+  "update_type": "contacts",
+  "contacts": {
+    "primary": {
+      "name": "string",
+      "email": "string",
+      "phone": "string"  // optional
+    },
+    "escalation": {
+      "name": "string",
+      "email": "string",
+      "phone": "string"  // optional
+    }
+  },
+  "options": {
+    "dry_run": true | false,
+    "output_format": "text" | "json"
+  }
+}
+```
+
+### Update Workload Schema - Alarms Update (CloudWatch)
+
+```json
+{
+  "workload_name": "string",
+  "update_type": "alarms",
+  "discovery": {
+    "method": "tags" | "arns",
+    "tags": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+    // OR
+    "arns": [
+      "arn:aws:cloudwatch:region:account:alarm:name"
+    ]
+  },
+  "options": {
+    "dry_run": true | false,
+    "output_format": "text" | "json"
+  }
+}
+```
+
+### Update Workload Schema - Alarms Update (APM)
+
+```json
+{
+  "workload_name": "string",
+  "update_type": "alarms",
+  "third_party_apm": {
+    "third_party_apm_identifier_list": [
+      {
+        "event_bridge_arn": "arn:aws:events:us-east-1:123456789012:event-bus/idr-custom-bus",
+        "third_party_apm_identifiers": ["alert-1", "alert-2"]
+      }
+    ]
+  },
+  "options": {
+    "dry_run": true | false,
     "output_format": "text" | "json"
   }
 }

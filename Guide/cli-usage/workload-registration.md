@@ -169,10 +169,12 @@ What would you like to do?:
   1-4 → Mark resource as selected by number
   5 → Deselect all
   6 → Accept current resource selection (0 selected of 29) and go back to "Resource group view in us-west-2 region"
-→ Enter number (1-6): 4 
+→ Enter your choice (1,3 or 1-3 or 1,3-5, select range: 1-6): 4 
 ```
 
-Here you can use number 1-4 to select each individual resource. As you manage the selection, the resource selection status will change to ‘selected’ and the number of selected items will increment. Select ‘Accept current resource selection’ (option 6) when done and go back to the previous level - ‘Resource group view’. 
+Here you can use number 1-4 to select each individual resource. It can be specific numbers: 1,3,4 (select alarms 1, 3, and 4), ranges: 1-4 (select alarms 1 through 4) or combined: 1,3-4 (select alarm 1 and alarms 3 through 4). 
+
+As you manage the selection, the resource selection status will change to ‘selected’ and the number of selected items will increment. Select ‘Accept current resource selection’ (option 6) when done and go back to the previous level - ‘Resource group view’. 
 
 To complete the selection, you need to go up to the ‘Regional view’. The menu will have an option to ‘Accept current selection and proceed to onboarding’:
 

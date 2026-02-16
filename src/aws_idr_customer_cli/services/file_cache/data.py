@@ -54,6 +54,7 @@ class CommandStatusTracker(DataClassJsonMixin):
     alarm_creation: Optional[ProgressTracker] = None
     alarm_ingestion: Optional[ProgressTracker] = None
     apm_setup: Optional[ProgressTracker] = None
+    workload_update: Optional[ProgressTracker] = None
 
 
 @dataclass_json

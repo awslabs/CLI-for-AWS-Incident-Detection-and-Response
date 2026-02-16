@@ -112,6 +112,65 @@ class InteractiveUI(Generic[T]):
 
             self.console.print("[red]Invalid selection. Try again.[/red]")
 
+    def select_multiple_with_ranges(
+        self,
+        options: List[str],
+        message: str = "Select resources",
+        explicit_index: bool = False,
+        max_choice_number: Optional[int] = None,
+        exclusive_choices: Optional[set[int]] = None,
+    ) -> set[int]:
+        """
+        Select from numbered options. Support range input and bulk selection.
+        explicit_index: if index is coming as part of option itself
+        exclusive_choices: list of 1-based indices that can only be selected alone
+        """
+        self.console.print(f"\n{message}:")
+
+        for i, option in enumerate(options, 1):
+            if explicit_index:
+                self.console.print(f"  {option}")
+            else:
+                self.console.print(f"  {i}. {option}")
+
+        max_choice = max_choice_number if max_choice_number else len(options)
+        exclusive_set = set(exclusive_choices or [])
+
+        while True:
+            try:
+                choice_range = f"1,3 or 1-3 or 1,3-5, select range: 1-{max_choice}"
+                choice = (
+                    self.prompt_input("Enter your choice", choice_range).strip().lower()
+                )
+
+                # Parse numeric selection
+                selected_indices = self.parse_numeric_selection(choice)
+
+                # Validate
+                invalid = [i for i in selected_indices if i < 1 or i > max_choice]
+                if invalid:
+                    self.display_error(f"Invalid: {invalid}. Use 1-{max_choice}")
+                    continue
+
+                if not selected_indices:
+                    self.display_error("Select at least one resource")
+                    continue
+
+                # Check exclusive choices
+                selected_exclusive = selected_indices & exclusive_set
+                if selected_exclusive and len(selected_indices) > 1:
+                    self.display_error(
+                        f"Choice {list(selected_exclusive)} can only be selected alone"
+                    )
+                    continue
+
+                selected_resource_indexes = {i - 1 for i in sorted(selected_indices)}
+                return selected_resource_indexes
+            except ValueError:
+                pass
+
+            self.console.print("[red]Invalid format. Use: 1,3 or 1-3. Try again.[/red]")
+
     def display_resource_summary(self, resources: List[Dict[str, Any]]) -> None:
         """Display resource summary by service."""
         if not resources:
@@ -166,3 +225,20 @@ class InteractiveUI(Generic[T]):
             yield
         finally:
             self.set_silent_mode(True)
+
+    @staticmethod
+    def parse_numeric_selection(selection: str) -> set[int]:
+        """Parse numeric selection like '1,3-5,7' into set of indices."""
+        selected_indices: set[int] = set()
+        for part in selection.split(","):
+            part = part.strip()
+            if "-" in part:
+                start, end = map(int, part.split("-"))
+                if start > end:
+                    raise ValueError(
+                        f"Invalid range '{part}': start {start} cannot be greater than end {end}"
+                    )
+                selected_indices.update(range(start, end + 1))
+            else:
+                selected_indices.add(int(part))
+        return selected_indices
