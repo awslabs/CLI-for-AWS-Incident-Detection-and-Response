@@ -22,6 +22,68 @@ jobs:
       run: |
         VERSION=$(grep -E "^version = " pyproject.toml | sed 's/version = "\(.*\)"/\1/')
         echo "version=v$VERSION" >> $GITHUB_OUTPUT
+        echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Get previous tag
+      id: prev_tag
+      run: |
+        PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${{ steps.version.outputs.version }}$" | head -n 1)
+        echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update CHANGELOG
+      run: |
+        VERSION="${{ steps.version.outputs.version_number }}"
+        PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+        DATE=$(date +%Y-%m-%d)
+        
+        # Get commit messages since last tag
+        if [ -n "$PREV_TAG" ]; then
+          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -v "^- Merge pull request" | grep -v "^- Update CHANGELOG")
+        else
+          COMMITS=$(git log --pretty=format:"- %s" --no-merges | grep -v "^- Merge pull request" | grep -v "^- Update CHANGELOG")
+        fi
+        
+        # Create temporary file with new entry
+        cat > /tmp/changelog_entry.txt << 'EOF'
+        ## [$VERSION] - $DATE
+        
+        ### Changed
+        $COMMITS
+        
+        EOF
+        
+        # Replace placeholders
+        sed -i "s/\$VERSION/$VERSION/g" /tmp/changelog_entry.txt
+        sed -i "s/\$DATE/$DATE/g" /tmp/changelog_entry.txt
+        echo "$COMMITS" | sed 's/^//' > /tmp/commits.txt
+        sed -i "/### Changed/r /tmp/commits.txt" /tmp/changelog_entry.txt
+        sed -i '/\$COMMITS/d' /tmp/changelog_entry.txt
+        
+        # Insert into CHANGELOG.md after line 7
+        head -n 7 CHANGELOG.md > /tmp/changelog_new.md
+        cat /tmp/changelog_entry.txt >> /tmp/changelog_new.md
+        tail -n +8 CHANGELOG.md >> /tmp/changelog_new.md
+        mv /tmp/changelog_new.md CHANGELOG.md
+        
+        # Commit and push changelog
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add CHANGELOG.md
+        if git diff --staged --quiet; then
+          echo "No changelog changes to commit"
+        else
+          git commit -m "Update CHANGELOG for version $VERSION [skip ci]"
+          git push origin main
+        fi
+
+    - name: Extract changelog for release
+      id: changelog
+      run: |
+        VERSION="${{ steps.version.outputs.version_number }}"
+        CONTENT=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '1d;$d' | sed '/^$/d')
+        echo "content<<EOF" >> $GITHUB_OUTPUT
+        echo "$CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -29,8 +91,8 @@ jobs:
         tag_name: ${{ steps.version.outputs.version }}
         name: Release ${{ steps.version.outputs.version }}
         body: |
-          Automated release for version ${{ steps.version.outputs.version }}
+          ${{ steps.changelog.outputs.content }}
           
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.version.outputs.version }}...HEAD
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.prev_tag.outputs.prev_tag }}...${{ steps.version.outputs.version }}
         draft: false
         prerelease: false
