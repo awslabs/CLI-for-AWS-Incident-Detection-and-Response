@@ -26,7 +26,7 @@ The `awsidr setup-apm` command deploys AWS infrastructure to integrate AWS Incid
 * Transform Lambda Function
 * IAM Execution Role
 
-For detailed resource information, see [Appendix - APM Integrations](appendix.md#apm-integrations).
+For detailed resource information, see [Appendix - APM Integrations](../appendix.md#apm-integrations).
 
 **More details:** [Partner Event Source Integration](https://docs.aws.amazon.com/IDR/latest/userguide/idr-gs-ingest_alarms_from_apm_to_eventbridge.html)
 
@@ -46,7 +46,7 @@ For detailed resource information, see [Appendix - APM Integrations](appendix.md
 * Transform Lambda Function
 * IAM Execution Role
 
-For detailed resource information, see [Appendix - APM Integrations](appendix.md#apm-integrations).
+For detailed resource information, see [Appendix - APM Integrations](../appendix.md#apm-integrations).
 
 **More details:** [SNS setup for Grafana Cloud](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-amazon-sns/)
 
@@ -70,7 +70,7 @@ For detailed resource information, see [Appendix - APM Integrations](appendix.md
 * API Gateway Usage Plan with throttling
 * IAM Execution Roles
 
-For detailed resource information, see [Appendix - APM Integrations](appendix.md#apm-integrations).
+For detailed resource information, see [Appendix - APM Integrations](../appendix.md#apm-integrations).
 
 **Post-Deployment Configuration:** After stack deployment, you must configure your APM tool with the following:
 
