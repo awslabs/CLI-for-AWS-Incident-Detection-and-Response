@@ -53,7 +53,7 @@ These guides contain the step-by-step walkthrough for each command. You can refe
 - `awsidr register-workload` → [Workload Registration Guide](Guide/cli-usage/workload-registration.md) - Collect workload metadata, discover resources using tags, select AWS resources for monitoring, and create support cases
 - `awsidr create-alarms` → [CloudWatch Alarms Guide](Guide/cli-usage/cloudwatch-alarms.md) - Create new CloudWatch alarms with CLI-generated recommendations based on your selected AWS resources
 - `awsidr ingest-alarms` → [Alarm Ingestion Guide](Guide/cli-usage/alarm-ingestion.md) - Onboard existing CloudWatch alarms or APM alerts using tags, ARNs, or file uploads; includes validation and support case management
-- `awsidr setup-apm` → [APM Integration Guide](Guide/cli-usage/apm-integration.md) - Deploy infrastructure for third-party APM tools (Datadog, New Relic, etc.)
+- `awsidr setup-apm` → [APM Integration Guide](Guide/cli-usage/apm-integration.md) - Deploy infrastructure for third-party APM tools (Datadog, New Relic, PagerDuty, etc.)
 
 ### Examples Input for Unattended Mode
 
