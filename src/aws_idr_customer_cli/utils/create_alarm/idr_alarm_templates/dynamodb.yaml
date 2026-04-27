@@ -68,13 +68,13 @@ templates:
       }
     ]
 
-  - name: "IDR-DynamoDB-SuccessfulRequestLatency"
+  - name: "IDR-DynamoDB-SuccessfulRequestLatency-GetItem"
     service: "DynamoDB"
     alarm_type: "RELIABILITY"
     metric_type: "NATIVE"
-    description: "Monitors successful request latency to detect performance degradation"
+    description: "Monitors GetItem request latency to detect performance degradation"
     configuration:
-      AlarmName: "IDR-DynamoDB-SuccessfulRequestLatency-${table_name}"
+      AlarmName: "IDR-DynamoDB-SuccessfulRequestLatency-GetItem-${table_name}"
       MetricName: "SuccessfulRequestLatency"
       Namespace: "AWS/DynamoDB"
       Statistic: "Average"
@@ -88,6 +88,285 @@ templates:
         {
           Name: "TableName",
           Value: "${table_name}"
+        },
+        {
+          Name: "Operation",
+          Value: "GetItem"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-SuccessfulRequestLatency-PutItem"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors PutItem request latency to detect performance degradation"
+    configuration:
+      AlarmName: "IDR-DynamoDB-SuccessfulRequestLatency-PutItem-${table_name}"
+      MetricName: "SuccessfulRequestLatency"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 100.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        },
+        {
+          Name: "Operation",
+          Value: "PutItem"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-SuccessfulRequestLatency-Query"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors Query request latency to detect performance degradation"
+    configuration:
+      AlarmName: "IDR-DynamoDB-SuccessfulRequestLatency-Query-${table_name}"
+      MetricName: "SuccessfulRequestLatency"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Average"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 100.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        },
+        {
+          Name: "Operation",
+          Value: "Query"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-SystemErrors"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "NATIVE"
+    description: "Monitors DynamoDB SystemErrors (HTTP 500) across key operations"
+    configuration:
+      AlarmName: "IDR-DynamoDB-SystemErrors-${table_name}"
+      Metrics: [
+        {
+          Id: "m1",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "GetItem" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m2",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "PutItem" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m3",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "UpdateItem" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m4",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "Query" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m5",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "BatchWriteItem" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "m6",
+          ReturnData: false,
+          MetricStat: {
+            Metric: {
+              Namespace: "AWS/DynamoDB",
+              MetricName: "SystemErrors",
+              Dimensions: [
+                { Name: "TableName", Value: "${table_name}" },
+                { Name: "Operation", Value: "BatchGetItem" }
+              ]
+            },
+            Period: 60,
+            Stat: "Sum"
+          }
+        },
+        {
+          Id: "total",
+          ReturnData: true,
+          Expression: "FILL(m1,0) + FILL(m2,0) + FILL(m3,0) + FILL(m4,0) + FILL(m5,0) + FILL(m6,0)",
+          Label: "Total SystemErrors"
+        }
+      ]
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-GSI-ReadThrottleEvents"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors GSI read throttle events to detect capacity issues"
+    configuration:
+      AlarmName: "IDR-DynamoDB-GSI-ReadThrottleEvents-${table_name}-${index_name}"
+      MetricName: "ReadThrottleEvents"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        },
+        {
+          Name: "GlobalSecondaryIndexName",
+          Value: "${index_name}"
+        }
+      ]
+    Tags: [
+      {
+        Key: "AlarmType",
+        Value: "IDR-BestPractice"
+      },
+      {
+        Key: "Service",
+        Value: "DynamoDB"
+      }
+    ]
+
+  - name: "IDR-DynamoDB-GSI-WriteThrottleEvents"
+    service: "DynamoDB"
+    alarm_type: "RELIABILITY"
+    metric_type: "CONDITIONAL"
+    description: "Monitors GSI write throttle events to detect capacity issues"
+    configuration:
+      AlarmName: "IDR-DynamoDB-GSI-WriteThrottleEvents-${table_name}-${index_name}"
+      MetricName: "WriteThrottleEvents"
+      Namespace: "AWS/DynamoDB"
+      Statistic: "Sum"
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 5.0
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      TreatMissingData: "notBreaching"
+      Dimensions: [
+        {
+          Name: "TableName",
+          Value: "${table_name}"
+        },
+        {
+          Name: "GlobalSecondaryIndexName",
+          Value: "${index_name}"
         }
       ]
     Tags: [
