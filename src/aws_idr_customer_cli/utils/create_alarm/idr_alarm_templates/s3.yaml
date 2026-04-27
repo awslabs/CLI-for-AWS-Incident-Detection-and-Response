@@ -22,6 +22,10 @@ templates:
         {
           Name: "BucketName",
           Value: "${bucket_name}"
+        },
+        {
+          Name: "FilterId",
+          Value: "EntireBucket"
         }
       ]
     Tags: [
