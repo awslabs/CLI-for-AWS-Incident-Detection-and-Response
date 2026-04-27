@@ -105,15 +105,15 @@ You run the IDR CLI in the CloudShell. We also currently support Linux, Ubuntu, 
 For improved alarm creation accuracy, the CLI can validate whether conditional metrics (like DLQ metrics, replica lag, etc.) are available for your resources. Additionally, for Lambda functions, the CLI can detect Lambda@Edge deployments and create region-specific alarms. For MSK, OpenSearch, and EMR, the CLI queries resource configurations to create per-broker alarms, calculate dynamic thresholds, and filter non-monitorable clusters. These permissions are recommended if you plan on onboarding the following resources:
 
 ```
-apigatewayv2:GetApi                # Determine HTTP vs WebSocket API type for correct alarms
+apigateway:GET                     # Determine HTTP vs WebSocket API type for correct alarms
 lambda:GetFunctionConfiguration    # Validate Lambda DLQ configuration
 sns:ListSubscriptionsByTopic       # Validate SNS subscription DLQ/filter policies
 sns:GetSubscriptionAttributes      # Validate SNS subscription attributes
 dynamodb:DescribeTable             # Validate DynamoDB global table status
 rds:DescribeDBInstances            # Validate RDS read replica status
 s3:GetBucketLocation               # Get all S3 bucket locations
-s3:ListBucketMetricsConfigurations # Validate S3 request metrics configuration
-keyspaces:GetKeyspace              # Validate Keyspaces multi-region replication
+s3:GetMetricsConfiguration         # Validate S3 request metrics configuration
+cassandra:Select                   # Validate Keyspaces multi-region replication
 cloudfront:ListDistributions       # Detect Lambda@Edge associations with CloudFront
 cloudfront:GetDistribution         # Retrieve Lambda@Edge configuration from distributions
 cloudwatch:GetMetricData           # Scan regions for Lambda@Edge metrics
@@ -126,7 +126,7 @@ elasticmapreduce:DescribeCluster   # Detect terminated/transient EMR clusters to
 Without these permissions, the CLI will:
 - Skip conditional alarms for resources if there is no data for corresponding metrics in the last 14 days
 - **API Gateway HTTP/WebSocket behavior:**
-  - Without `apigatewayv2:GetApi`: Cannot distinguish between HTTP and WebSocket APIs, may apply incorrect alarm templates or skip API-type-specific alarms
+  - Without `apigateway:GET`: Cannot distinguish between HTTP and WebSocket APIs, may apply incorrect alarm templates or skip API-type-specific alarms
 - **Lambda@Edge behavior:**
   - Without `cloudfront:ListDistributions` / `cloudfront:GetDistribution`: Treat Lambda@Edge functions as regular Lambda functions (creating alarms only in us-east-1 instead of all regions where the function executes)
   - Without `cloudwatch:GetMetricData`: Skip Lambda@Edge regional alarm creation entirely (cannot determine which regions have metrics)
