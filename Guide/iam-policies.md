@@ -34,6 +34,7 @@ You can define customized IAM policies for least privileged access. The IDR CLI 
 - `awsidr setup-apm` with **Datadog**
 - `awsidr setup-apm` with **New Relic**
 - `awsidr setup-apm` with **Splunk Observability Cloud**
+- `awsidr setup-apm` with **PagerDuty**
 
 **Resources created:**
 - Custom EventBus
@@ -145,7 +146,7 @@ Without these permissions, the CLI will:
 | `awsidr register-workload` | [Policy 1](iam-policies/general-cli.json) |
 | `awsidr create-alarms` | [Policy 1](iam-policies/general-cli.json) |
 | `awsidr ingest-alarms` (CloudWatch) | [Policy 1](iam-policies/general-cli.json) |
-| `awsidr setup-apm` (Datadog/New Relic/Splunk) | [Policy 2](iam-policies/apm-saas.json) |
+| `awsidr setup-apm` (Datadog/New Relic/Splunk/PagerDuty) | [Policy 2](iam-policies/apm-saas.json) |
 | `awsidr setup-apm` (Grafana Cloud) | [Policy 3](iam-policies/apm-sns.json) |
 | `awsidr setup-apm` (Dynatrace/Custom Webhook) | [Policy 4](iam-policies/apm-webhook.json) |
 | `awsidr ingest-alarms` (APM) | [Policy 1](iam-policies/general-cli.json) (after setup-apm) |
