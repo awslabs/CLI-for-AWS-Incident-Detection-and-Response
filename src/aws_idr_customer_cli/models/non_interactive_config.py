@@ -20,6 +20,7 @@ class OutputFormat(str, Enum):
 class WorkloadConfig:
     name: str
     regions: List[str] = field(default_factory=list)  # Optional for ARN-based discovery
+    language_preference: Optional[str] = None
 
 
 @dataclass_json

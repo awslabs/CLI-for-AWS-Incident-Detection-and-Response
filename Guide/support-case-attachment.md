@@ -29,6 +29,7 @@ the CLI creates or updates an AWS Support case with a JSON attachment containing
 ## Workload Details
 
 - Workload name and selected AWS regions
+- Preferred language for IDR communications
 
 ## Alarm Configuration (when applicable)
 
