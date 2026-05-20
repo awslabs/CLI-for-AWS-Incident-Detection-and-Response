@@ -55,7 +55,8 @@ Configuration files for workload registration follow this structure:
 {
   "workload": {
     "name": "string",
-    "regions": ["string"]
+    "regions": ["string"],
+    "language_preference": "string" // optional, defaults to "English"
   },
   "discovery": {
     "method": "tags" | "arns",
@@ -281,6 +282,7 @@ Configuration files for alarm creation follow this structure:
 |-------|------|----------|-------------|
 | name | string | Yes | Unique workload identifier (appears in support cases) |
 | regions | array of strings | Yes | AWS regions where resources are located |
+| language_preference | string | No | Preferred language for IDR communications. Valid values: English (default), Japanese, Global Mandarin, Korean |
 
 ### Alarm Creation Contacts Section:
 
@@ -407,7 +409,8 @@ Provides structured output for programmatic processing:
     "workload_onboard": {
       "support_case_id": "case-123456789012-muen-2025-c4c6f43926eb198d",
       "name": "Test Application Workload",
-      "regions": ["us-east-1", "us-west-2"]
+      "regions": ["us-east-1", "us-west-2"],
+      "language_preference": "English"
     },
     "alarm_contacts": {
       "primary_contact": {

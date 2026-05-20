@@ -28,6 +28,8 @@ awsidr register-workload
 * Resource Selection
     * User selects specific AWS resources from each region and each resource type
     * IDR CLI will generate alarm recommendations based on these resources
+* Language Preference Selection
+    * Select preferred language for IDR communications
 * Support Case Creation
     * IDR CLI creates a support case and attaches collected workload information
 * Alarm Contact Information Collection

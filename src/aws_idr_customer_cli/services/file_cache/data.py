@@ -36,6 +36,13 @@ class OnboardingStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class Language(str, Enum):
+    ENGLISH = "English"
+    JAPANESE = "Japanese"
+    GLOBAL_MANDARIN = "Global Mandarin"
+    KOREAN = "Korean"
+
+
 @dataclass_json
 @dataclass
 class ProgressTracker:
@@ -88,6 +95,7 @@ class WorkloadOnboard:
     name: str
     regions: List[str]
     contacts_approval_timestamp: Optional[datetime] = datetime_field(required=False)
+    language_preference: Optional[Language] = None
     # Deprecated fields - for backward compatibility only
     description: Optional[str] = None
     enterprise_name: Optional[str] = None

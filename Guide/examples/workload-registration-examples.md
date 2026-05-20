@@ -54,3 +54,30 @@
   }
 }
 ```
+
+## Example 3: Workload Registration with Language Preference
+
+```json
+{
+  "workload": {
+    "name": "MyJapaneseWorkload",
+    "language_preference": "Japanese",
+    "regions": [
+      "ap-northeast-1"
+    ]
+  },
+
+  "discovery": {
+    "method": "tags",
+    "tags": {
+      "Environment": "Production",
+      "Owner": "MyTeam"
+    }
+  },
+
+  "options": {
+    "dry_run": false,
+    "output_format": "json"
+  }
+}
+```

@@ -10,6 +10,7 @@ from aws_idr_customer_cli.models.non_interactive_config import (
     WorkloadRegistrationConfig,
 )
 from aws_idr_customer_cli.services.file_cache.data import (
+    Language,
     OnboardingStatus,
     OnboardingSubmission,
     ProgressTracker,
@@ -98,6 +99,18 @@ class NonInteractiveWorkloadService(NonInteractiveServiceBase):
             name=config_obj.workload.name,
             regions=config_obj.workload.regions,
         )
+
+        language_value = (
+            config_obj.workload.language_preference or Language.ENGLISH.value
+        )
+        try:
+            workload.language_preference = Language(language_value)
+        except ValueError:
+            valid_options = [lang.value for lang in Language]
+            raise ValueError(
+                f"Invalid language_preference '{language_value}'. "
+                f"Valid options are: {', '.join(valid_options)}"
+            )
 
         discovered_resources = []
         self.ui.display_info(

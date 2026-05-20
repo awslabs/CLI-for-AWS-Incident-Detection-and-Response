@@ -9,6 +9,7 @@ from aws_idr_customer_cli.input.input_resource_discovery import (
     InputResourceDiscovery,
 )
 from aws_idr_customer_cli.services.file_cache.data import (
+    Language,
     WorkloadOnboard,
 )
 from aws_idr_customer_cli.services.support_case_service import SupportCaseService
@@ -187,7 +188,22 @@ class WorkloadSession(InteractiveSession):
         self.submission.resource_arns_selected = result
         return {}
 
-    @session_step("Create Support Case", order=5)
+    @session_step("Select Language Preference", order=5)
+    def _select_language_preference(self) -> Dict[str, Any]:
+        """Prompt customer to select their preferred language for IDR communications."""
+        workload = self._ensure_workload_onboard()
+
+        choices = [lang.value for lang in Language]
+        selected = self.ui.ask_select(
+            "Select your preferred language for IDR communications",
+            choices=choices,
+            default=Language.ENGLISH.value,
+        )
+
+        workload.language_preference = Language(selected)
+        return {}
+
+    @session_step("Create Support Case", order=6)
     def create_support_case(self) -> Dict[str, Any]:
         """Create AWS Support Case for workload onboard."""
         try:
@@ -235,7 +251,7 @@ class WorkloadSession(InteractiveSession):
 
             return {}
 
-    @session_step("Alarm creation handoff", order=6)
+    @session_step("Alarm creation handoff", order=7)
     def _handoff_to_alarm_creation(self) -> Dict[str, Any]:
         """Handle workload registration completion and workflow transition."""
 
@@ -288,15 +304,19 @@ class WorkloadSession(InteractiveSession):
             else 0
         )
 
-        self.ui.display_result(
-            "📋 Workload registration summary",
-            {
-                "Workload name": workload.name,
-                "Regions": ", ".join(workload.regions),
-                "Total resources discovered": f"{self._total_resources_discovered}",
-                "Resources selected for onboarding": f"{resource_count}",
-            },
-        )
+        summary = {
+            "Workload name": workload.name,
+            "Regions": ", ".join(workload.regions),
+            "Language preference": (
+                workload.language_preference.value
+                if workload.language_preference
+                else Language.ENGLISH.value
+            ),
+            "Total resources discovered": f"{self._total_resources_discovered}",
+            "Resources selected for onboarding": f"{resource_count}",
+        }
+
+        self.ui.display_result("📋 Workload registration summary", summary)
 
     def _display_resume_info(self) -> None:
         """Display resume information with context from previous steps."""
