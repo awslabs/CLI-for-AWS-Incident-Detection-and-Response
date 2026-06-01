@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "awsidr"
-version = "1.0.8"
+version = "1.0.9"
 dependencies = [
     "arnparse>=0.0.2",
     "aws-lambda-powertools==3.7.0",
