@@ -32,6 +32,7 @@ class ApmProvider(str, Enum):
     SPLUNK = "Splunk Observability Cloud"
     DYNATRACE = "Dynatrace"
     GRAFANA_OSS = "Grafana OSS"
+    PAGERDUTY = "PagerDuty"
 
 
 @dataclass(frozen=True)
@@ -273,6 +274,7 @@ DEFAULT_INCIDENT_PATHS = {
     ApmProvider.SPLUNK: IncidentPath(path='event["detail"]["ruleName"]'),
     ApmProvider.DYNATRACE: IncidentPath(path='raw_json["detail"]["ProblemTitle"]'),
     ApmProvider.GRAFANA_OSS: IncidentPath(path='alert["labels"]["alertname"]'),
+    ApmProvider.PAGERDUTY: IncidentPath(path='event["detail"]["incident"]["title"]'),
 }
 
 # Template file mapping based on integration type
@@ -340,6 +342,11 @@ APM_PROVIDERS: Dict[ApmProvider, ApmProviderConfig] = {
         integration_type=IntegrationType.NON_SAAS,
         incident_path=DEFAULT_INCIDENT_PATHS[ApmProvider.GRAFANA_OSS],
         domains=[],
+    ),
+    ApmProvider.PAGERDUTY: ApmProviderConfig(
+        integration_type=IntegrationType.SAAS,
+        incident_path=DEFAULT_INCIDENT_PATHS[ApmProvider.PAGERDUTY],
+        domains=["pagerduty.com"],
     ),
 }
 
@@ -421,6 +428,10 @@ class ApmDocumentationUrls(str, Enum):
         "integrations/webhook-notifier/"
     )
 
+    PAGERDUTY_EVENTBRIDGE = (
+        "https://support.pagerduty.com/main/docs/amazon-eventbridge-integration-guide"
+    )
+
     @classmethod
     def get_provider_docs(cls, provider: str) -> str:
         """Get documentation URL for specific APM provider."""
@@ -430,6 +441,7 @@ class ApmDocumentationUrls(str, Enum):
             "Grafana OSS": cls.GRAFANA_OSS_WEBHOOK,
             "Managed Grafana": cls.MANAGED_GRAFANA_SNS,
             "Splunk Observability Cloud": cls.SPLUNK,
+            "PagerDuty": cls.PAGERDUTY_EVENTBRIDGE,
         }
         return provider_mapping.get(provider, cls.EVENTBRIDGE).value
 
@@ -490,6 +502,8 @@ APM_TEST_EVENT_DOCS: Dict[str, str] = {
     "get-notified/notification-integrations/#eventBridge",
     "Grafana OSS": "https://grafana.com/docs/grafana/latest/alerting/"
     "configure-notifications/manage-contact-points/",
+    "PagerDuty": "https://support.pagerduty.com/main/docs/"
+    "amazon-eventbridge-integration-guide",
 }
 
 # Next steps instructions for alarm ingestion

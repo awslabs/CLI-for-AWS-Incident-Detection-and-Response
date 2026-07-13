@@ -808,8 +808,9 @@ class AlarmIngestionSession(InteractiveSession):
                     return {}
                 else:
                     # Case was resolved, fall through to create new case
+                    display_id = self.support_case_service.get_display_id(case_id)
                     self.ui.display_info(
-                        f"ℹ️  Previous support case {case_id} is resolved. "
+                        f"ℹ️  Previous support case {display_id} is resolved. "
                         "Creating a new support case..."
                     )
             except (AlarmCreationValidationError, AlarmIngestionValidationError) as e:
@@ -858,10 +859,16 @@ class AlarmIngestionSession(InteractiveSession):
         return None
 
     def _display_support_case(self, case_id: str) -> None:
-        """Display support case information."""
-        self.ui.display_info(f"📋 Support Case ID: {case_id}")
+        """Display support case information.
+
+        ``case_id`` is the internal AWS Support caseId; resolve it to the
+        customer-facing displayId so the printed ID and console link match what
+        the customer sees in the AWS Support Console.
+        """
+        display_id = self.support_case_service.get_display_id(case_id)
+        self.ui.display_info(f"📋 Support Case ID: {display_id}")
         case_url = (
             "https://support.console.aws.amazon.com/support/home"
-            f"#/case/?displayId={case_id}"
+            f"#/case/?displayId={display_id}"
         )
         self.ui.display_info(f"🔗 View case: {case_url}")

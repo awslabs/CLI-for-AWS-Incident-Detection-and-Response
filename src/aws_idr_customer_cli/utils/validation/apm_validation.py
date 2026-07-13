@@ -330,7 +330,7 @@ class ApmPrerequisiteValidator:
             return ValidationResult(
                 is_valid=False,
                 error_message=str(e),
-                help_url=ApmDocumentationUrls.EVENTBRIDGE,
+                help_url=ApmDocumentationUrls.EVENTBRIDGE.value,
             )
 
     def validate_partner_event_source(
@@ -357,7 +357,7 @@ class ApmPrerequisiteValidator:
             return ValidationResult(
                 is_valid=False,
                 error_message=str(e),
-                help_url=ApmDocumentationUrls.EVENTBRIDGE,
+                help_url=ApmDocumentationUrls.EVENTBRIDGE.value,
             )
 
     def validate_saas_prerequisites(
@@ -376,8 +376,10 @@ class ApmPrerequisiteValidator:
             f"(example: {example_arn})",
             default=True,
         ):
-            ui.display_error(f" Patner EventBridge setup required for {provider}.")
-            ui.display_info(f"Documentation: {ApmDocumentationUrls.EVENTBRIDGE}")
+            ui.display_error(f" Partner EventBridge setup required for {provider}.")
+            ui.display_info(
+                f"Documentation: {ApmDocumentationUrls.get_provider_docs(provider)}"
+            )
             return {ACTION_KEY: ACTION_QUIT}
 
         def validation_func() -> ValidationResult:

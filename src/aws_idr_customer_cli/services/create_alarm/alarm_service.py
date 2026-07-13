@@ -144,18 +144,6 @@ class AlarmService:
 
         return recommendations
 
-    def _log_batch_progress(
-        self,
-        total_count: int,
-        processed_count: int,
-        created_count: int,
-        failed_count: int,
-    ) -> None:
-        self.ui.display_info(
-            f"Progress: {processed_count} out of {total_count} alarms processed "
-            f"({created_count} created, {failed_count} failed)"
-        )
-
     def _process_single_alarm_creation(
         self, recommendation: AlarmRecommendation
     ) -> AlarmCreation:
@@ -201,26 +189,31 @@ class AlarmService:
         failed_count = 0
         limit_exceeded = False
 
-        self.ui.display_info("🔍 Checking alarm creation status...")
-        for i in range(0, total_count, batch_size):
-            self._log_batch_progress(total_count, i, created_count, failed_count)
-            batch = new_recommendations[i : i + batch_size]
-            for j, recommendation in enumerate(batch):
-                try:
-                    alarm_creation = self._process_single_alarm_creation(recommendation)
-                    created_alarms.append(alarm_creation)
-                    created_count += 1
-                except LimitExceededError:
-                    limit_exceeded = True
-                    remaining_recommendation = new_recommendations[i + j :]
-                    failed_alarms.extend(remaining_recommendation)
-                    failed_count += len(remaining_recommendation)
+        with self.ui.progress_for("Creating alarms", total=total_count) as advance:
+            for i in range(0, total_count, batch_size):
+                batch = new_recommendations[i : i + batch_size]
+                for j, recommendation in enumerate(batch):
+                    try:
+                        alarm_creation = self._process_single_alarm_creation(
+                            recommendation
+                        )
+                        created_alarms.append(alarm_creation)
+                        created_count += 1
+                        advance()
+                    except LimitExceededError:
+                        limit_exceeded = True
+                        remaining_recommendation = new_recommendations[i + j :]
+                        failed_alarms.extend(remaining_recommendation)
+                        failed_count += len(remaining_recommendation)
+                        for _ in remaining_recommendation:
+                            advance()
+                        break
+                    except Exception:
+                        failed_alarms.append(recommendation)
+                        failed_count += 1
+                        advance()
+                if limit_exceeded:
                     break
-                except Exception:
-                    failed_alarms.append(recommendation)
-                    failed_count += 1
-            if limit_exceeded:
-                break
 
         # Convert all results to AlarmCreation objects
         unselected_alarms_converted = self.recommendations_to_alarm_creation_objects(
@@ -270,37 +263,42 @@ class AlarmService:
         processed_count = 0
         failed_count = 0
 
-        for resource in resource_arns:
-            try:
-                # Process single resource (template caching makes this efficient)
-                alarm_configs = (
-                    self.alarm_recommendation_service.generate_alarm_configurations(
-                        [resource]
-                    )
-                )
-
-                if alarm_configs:
-                    recommendations = self._convert_configs_to_recommendations(
-                        alarm_configs
-                    )
-                    all_recommendations.extend(recommendations)
-                    processed_count += 1
-                else:
-                    # Check if this is EKS/ECS resource for better error message
-                    if ":eks:" in resource.arn or ":ecs:" in resource.arn:
-                        service_name = "EKS" if ":eks:" in resource.arn else "ECS"
-                        self.logger.warning(
-                            f"No configurations generated for resource: {resource.arn} "
-                            f"(Container Insights not enabled - required for {service_name} alarms)"
+        with self.ui.progress_for(
+            "Analyzing resources", total=len(resource_arns)
+        ) as advance:
+            for resource in resource_arns:
+                try:
+                    # Process single resource (template caching makes this efficient)
+                    alarm_configs = (
+                        self.alarm_recommendation_service.generate_alarm_configurations(
+                            [resource]
                         )
-                    failed_count += 1
+                    )
 
-            except Exception as e:
-                self.logger.error(
-                    f"Failed to process resource {resource.arn}: {str(e)}"
-                )
-                failed_count += 1
-                continue  # Continue with other resources
+                    if alarm_configs:
+                        recommendations = self._convert_configs_to_recommendations(
+                            alarm_configs
+                        )
+                        all_recommendations.extend(recommendations)
+                        processed_count += 1
+                    else:
+                        # Check if this is EKS/ECS resource for better error message
+                        if ":eks:" in resource.arn or ":ecs:" in resource.arn:
+                            service_name = "EKS" if ":eks:" in resource.arn else "ECS"
+                            self.logger.warning(
+                                f"No configurations generated for resource: "
+                                f"{resource.arn} (Container Insights not "
+                                f"enabled - required for {service_name} alarms)"
+                            )
+                        failed_count += 1
+
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to process resource {resource.arn}: {str(e)}"
+                    )
+                    failed_count += 1
+                finally:
+                    advance()
 
         self.logger.info(
             f"Resource processing complete: {processed_count} successful, {failed_count} failed, "

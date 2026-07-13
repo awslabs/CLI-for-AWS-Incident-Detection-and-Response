@@ -33,6 +33,13 @@ class BotoServiceName(str, Enum):
 # Concurrency constants for parallel operations
 MAX_PARALLEL_WORKERS = 10  # Conservative worker count to avoid API throttling
 
+# Aggressive timeouts used only by best-effort multi-region metric scans.
+# A single unreachable region must not stall the whole scan: budget per region
+# is ~connect_timeout + read_timeout * (max_attempts - 1) seconds.
+SCAN_CONNECT_TIMEOUT_SECONDS = 3
+SCAN_READ_TIMEOUT_SECONDS = 10
+SCAN_MAX_ATTEMPTS = 2
+
 try:
     CLI_VERSION = version("awsidr")
 except PackageNotFoundError:

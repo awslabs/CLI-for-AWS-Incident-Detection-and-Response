@@ -137,8 +137,13 @@ class ApmSetupSession(InteractiveSession):
         )
 
         if workload.support_case_id:
+            # support_case_id is the internal caseId; show the customer-facing
+            # displayId (falls back to the caseId if it cannot be resolved).
+            display_id = self.support_case_service.get_display_id(
+                workload.support_case_id
+            )
             self.ui.display_info(
-                f"  • Existing Support Case: {workload.support_case_id}",
+                f"  • Existing Support Case: {display_id}",
                 style=STYLE_DIM,
             )
 

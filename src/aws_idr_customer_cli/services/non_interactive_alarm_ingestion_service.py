@@ -509,15 +509,21 @@ class NonInteractiveAlarmIngestionService(NonInteractiveServiceBase):
                 )
                 if submission.workload_onboard:
                     submission.workload_onboard.support_case_id = new_case_id
+                display_id = self._support_case_service.get_display_id(new_case_id)
                 self.ui.display_info(
-                    f"✅ Support case created: {new_case_id}", style="green"
+                    f"✅ Support case created: {display_id}", style="green"
                 )
                 return new_case_id
         except SupportCaseAlreadyExistsError as e:
             if config_obj.options.update_existing_case:
                 existing_case_id = extract_case_id_from_error(str(e))
                 if existing_case_id:
-                    self.ui.display_info(f"Updating existing case: {existing_case_id}")
+                    # Show the customer-facing displayId; the internal caseId is
+                    # still used for the update_case_with_attachment_set call below.
+                    display_id = self._support_case_service.get_display_id(
+                        existing_case_id
+                    )
+                    self.ui.display_info(f"Updating existing case: {display_id}")
                     self._support_case_service.update_case_with_attachment_set(
                         session_id=session_id, case_id=existing_case_id
                     )
@@ -579,6 +585,9 @@ class NonInteractiveAlarmIngestionService(NonInteractiveServiceBase):
         """Display final summary of alarm ingestion."""
         self.ui.display_info("✅ Alarm ingestion completed successfully", style="green")
 
+        display_id = (
+            self._support_case_service.get_display_id(case_id) if case_id else "None"
+        )
         summary_data = {
             "Workload name": (
                 submission.workload_onboard.name
@@ -586,7 +595,7 @@ class NonInteractiveAlarmIngestionService(NonInteractiveServiceBase):
                 else "Unknown"
             ),
             "CloudWatch alarms ingested": str(alarm_count),
-            "Support case ID": case_id or "None",
+            "Support case ID": display_id,
             "Service linked role created": "Yes" if slr_created else "No",
         }
 

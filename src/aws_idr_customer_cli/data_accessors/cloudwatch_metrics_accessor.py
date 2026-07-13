@@ -8,7 +8,10 @@ from mypy_boto3_cloudwatch import CloudWatchClient
 from retry import retry
 
 from aws_idr_customer_cli.data_accessors.base_accessor import BaseAccessor
-from aws_idr_customer_cli.utils.constants import MAX_PARALLEL_WORKERS, BotoServiceName
+from aws_idr_customer_cli.utils.constants import (
+    MAX_PARALLEL_WORKERS,
+    BotoServiceName,
+)
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 from aws_idr_customer_cli.utils.region_utils import get_valid_regions
 
@@ -23,14 +26,24 @@ class CloudWatchMetricsAccessor(BaseAccessor):
 
     @inject
     def __init__(
-        self, logger: CliLogger, client_factory: Callable[[str, str], CloudWatchClient]
+        self,
+        logger: CliLogger,
+        client_factory: Callable[[str, str], CloudWatchClient],
+        scan_client_factory: Optional[Callable[[str, str], CloudWatchClient]] = None,
     ) -> None:
         super().__init__(logger, "CloudWatch Metrics API")
         self.create_client = client_factory
+        # Fast-timeout factory used only for best-effort multi-region scans.
+        # Falls back to the standard factory if not injected (e.g. legacy tests).
+        self.create_scan_client = scan_client_factory or client_factory
 
     def get_client(self, region: str) -> Any:
         """Get CloudWatch client for specified region using cached factory."""
         return self.create_client(BotoServiceName.CLOUDWATCH, region)
+
+    def get_scan_client(self, region: str) -> Any:
+        """Get CloudWatch client with short timeouts for best-effort region scans."""
+        return self.create_scan_client(BotoServiceName.CLOUDWATCH, region)
 
     @retry(
         exceptions=ClientError, tries=MAX_RETRIES, delay=1.0, backoff=2.0, logger=None
@@ -176,7 +189,8 @@ class CloudWatchMetricsAccessor(BaseAccessor):
         us-east-1 itself.
 
         This method uses ThreadPoolExecutor to check multiple regions
-        concurrently, significantly improving performance
+        concurrently. Each region uses an aggressive connect/read timeout
+        so a single unreachable endpoint cannot stall the whole scan.
 
         Args:
             function_name: Lambda function name (raw name, without us-east-1
@@ -193,14 +207,15 @@ class CloudWatchMetricsAccessor(BaseAccessor):
         if regions is None:
             regions = get_valid_regions()
 
+        total = len(regions)
         self.logger.info(
-            f"Scanning {len(regions)} regions for Lambda@Edge "
+            f"Scanning {total} regions for Lambda@Edge "
             f"metrics for function: {function_name}"
         )
 
         def check_region(region: str) -> Optional[str]:
             """
-            Check a single region for Lambda metrics.
+            Check a single region for Lambda metrics using the fast-scan client.
 
             Args:
                 region: AWS region to check
@@ -209,19 +224,13 @@ class CloudWatchMetricsAccessor(BaseAccessor):
                 Region name if metrics found, None otherwise
             """
             try:
-                if self.validate_invoked_lambda(
+                if self._scan_region_for_lambda_metrics(
                     function_name, region, lookback_minutes, is_lambda_edge
                 ):
-                    self.logger.debug(
-                        f"Found metrics for {function_name} in region {region}"
-                    )
                     return region
             except Exception as e:
-                # Log but continue
-                self.logger.debug(
-                    f"Error checking region {region} for "
-                    f"Lambda@Edge metrics: {str(e)}"
-                )
+                # Log but continue — one region's failure must not block others
+                self.logger.info(f"  ✗ {region}: error ({type(e).__name__}: {str(e)})")
             return None
 
         regions_with_metrics: List[str] = []
@@ -232,10 +241,18 @@ class CloudWatchMetricsAccessor(BaseAccessor):
                 executor.submit(check_region, region): region for region in regions
             }
 
+            completed = 0
             for future in as_completed(future_to_region):
+                completed += 1
+                region = future_to_region[future]
                 result = future.result()
                 if result:
                     regions_with_metrics.append(result)
+                    self.logger.info(
+                        f"  [{completed}/{total}] {region}: ✓ metrics found"
+                    )
+                else:
+                    self.logger.info(f"  [{completed}/{total}] {region}: no metrics")
 
         self.logger.info(
             f"Found Lambda@Edge metrics in {len(regions_with_metrics)} "
@@ -243,3 +260,53 @@ class CloudWatchMetricsAccessor(BaseAccessor):
         )
 
         return regions_with_metrics
+
+    def _scan_region_for_lambda_metrics(
+        self,
+        function_name: str,
+        region: str,
+        lookback_minutes: int,
+        is_lambda_edge: bool,
+    ) -> bool:
+        """Best-effort single-region Lambda invocation check using fast-timeout client.
+
+        Mirrors validate_invoked_lambda but uses get_scan_client (short
+        connect/read timeouts, fewer retries). Used by find_regions_with_lambda_metrics
+        so a single unreachable region cannot stall the whole scan.
+        """
+        query_function_name = function_name
+        if is_lambda_edge:
+            query_function_name = f"us-east-1.{function_name}"
+
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(minutes=lookback_minutes)
+
+        response = self.get_scan_client(region).get_metric_data(
+            MetricDataQueries=[
+                {
+                    "Id": "invocations",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "AWS/Lambda",
+                            "MetricName": "Invocations",
+                            "Dimensions": [
+                                {
+                                    "Name": "FunctionName",
+                                    "Value": query_function_name,
+                                }
+                            ],
+                        },
+                        "Period": LAMBDA_INVOCATION_METRIC_PERIOD_SECONDS,
+                        "Stat": "Sum",
+                    },
+                }
+            ],
+            StartTime=start_time,
+            EndTime=end_time,
+        )
+
+        for result in response.get("MetricDataResults", []):
+            values = result.get("Values", [])
+            if values and sum(values) > 0:
+                return True
+        return False
