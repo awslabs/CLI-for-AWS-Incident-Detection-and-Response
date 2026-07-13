@@ -127,7 +127,8 @@ class LambdaEdgeProcessor:
         else:
             self.logger.info(
                 f"🌐 Detected Lambda@Edge function: {function_name} - "
-                f"Scanning for metrics across CloudFront edge regions"
+                f"Scanning for metrics across CloudFront edge regions "
+                f"(this may take ~10-30 seconds)"
             )
             regions_with_metrics = (
                 self.metrics_accessor.find_regions_with_lambda_metrics(

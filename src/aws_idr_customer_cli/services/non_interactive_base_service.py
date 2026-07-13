@@ -269,8 +269,11 @@ class NonInteractiveServiceBase(ABC):
 
         self.ui.display_info("Creating support case...")
         case_id = self._support_case_service.create_case(session_id)
+        # Show the customer-facing displayId, but return the internal caseId
+        # (callers persist it and use it for subsequent Support API calls).
+        display_id = self._support_case_service.get_display_id(case_id)
         self.ui.display_info(
-            f"✅ A support case has been created. Display ID: {case_id}"
+            f"✅ A support case has been created. Display ID: {display_id}"
         )
         return str(case_id)
 

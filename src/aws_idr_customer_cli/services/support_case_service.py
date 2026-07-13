@@ -97,13 +97,64 @@ class SupportCaseService:
 
         return case_id
 
-    def describe_case(self, case_id: str) -> Dict[str, Any]:
-        """Describe a support case by case ID."""
-        cases = self.accessor.describe_cases(case_id_list=[case_id])
+    def describe_case(
+        self, case_id: str, include_resolved_cases: bool = False
+    ) -> Dict[str, Any]:
+        """Describe a support case by case ID.
+
+        Args:
+            case_id: The internal AWS Support ``caseId``.
+            include_resolved_cases: When ``True``, resolved/closed cases are also
+                returned. AWS Support's ``DescribeCases`` excludes resolved cases
+                by default, so this must be set to look up a case that has
+                already been resolved.
+        """
+        cases = self.accessor.describe_cases(
+            case_id_list=[case_id], include_resolved_cases=include_resolved_cases
+        )
         if not cases:
             raise SupportCaseNotFoundError(f"Case {case_id} not found")
         case_detail: Dict[str, Any] = cases[0]
         return case_detail
+
+    def get_display_id(self, case_id: str) -> str:
+        """Resolve the customer-facing display ID for a support case.
+
+        The AWS Support API returns an opaque internal ``caseId`` (e.g.
+        ``case-1234...``) from create_case/describe_cases, which is what the CLI
+        stores and uses for subsequent API calls. The ``displayId`` is the
+        numeric, customer-facing identifier shown in the AWS Support Console.
+
+        This helper must be used whenever a case identifier is shown to the
+        customer or embedded in a Support Console URL, so the customer sees a
+        value that actually resolves in the console.
+
+        Args:
+            case_id: The internal AWS Support ``caseId``.
+
+        Returns:
+            The customer-facing ``displayId``, or the original ``case_id`` if it
+            cannot be resolved (e.g. the case is not yet retrievable).
+        """
+        try:
+            # Include resolved cases: get_display_id is display-only, and some
+            # call sites (e.g. the "previous case is resolved" message) resolve a
+            # case that has already been closed, which DescribeCases otherwise
+            # filters out by default.
+            case = self.describe_case(case_id, include_resolved_cases=True)
+            display_id = case.get("displayId")
+            if display_id:
+                return str(display_id)
+            self.logger.warning(
+                f"Support case {case_id} has no displayId; "
+                "falling back to internal case ID for display"
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Could not resolve displayId for case {case_id}: {e}. "
+                "Falling back to internal case ID for display."
+            )
+        return case_id
 
     @staticmethod
     def _get_command_type_from_submission(submission: OnboardingSubmission) -> str:
@@ -184,11 +235,15 @@ class SupportCaseService:
         subject = f"AWS Incident Detection and Response - {workload_name}"
         existing_case_id = self.get_duplicate_case_id(subject)
         if existing_case_id:
+            # Resolve the customer-facing display ID for the console link/message.
+            # The raised error keeps the internal case ID, since callers parse it
+            # back out (extract_case_id_from_error) to update the existing case.
+            display_id = self.get_display_id(existing_case_id)
             self.logger.info(
                 f"A support case for workload '{workload_name}' already exists.\n"
-                f"The case ID is {existing_case_id}. A new support case will not be created.\n"
+                f"The case ID is {display_id}. A new support case will not be created.\n"
                 "Visit the AWS Support Center link to view or update the existing case.\n"
-                f"https://console.aws.amazon.com/support/home#/case/?displayId={existing_case_id}\n"
+                f"https://console.aws.amazon.com/support/home#/case/?displayId={display_id}\n"
             )
             raise SupportCaseAlreadyExistsError(
                 f"❌ A support case for workload '{workload_name}' already exists \n"
@@ -250,7 +305,10 @@ class SupportCaseService:
             True if the case status is 'resolved', False otherwise.
         """
         try:
-            case_details = self.describe_case(case_id)
+            # Resolved cases are excluded from DescribeCases by default, so we
+            # must explicitly include them — otherwise a resolved case is not
+            # returned and its "resolved" status can never be observed here.
+            case_details = self.describe_case(case_id, include_resolved_cases=True)
             status = str(case_details.get("status", "")).lower()
             return status == "resolved"
         except Exception as e:

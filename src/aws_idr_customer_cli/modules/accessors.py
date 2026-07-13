@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Any
 
 import boto3
+from botocore.config import Config
 from injector import Module, provider, singleton
 from mypy_boto3_support import SupportClient
 
@@ -35,6 +36,11 @@ from aws_idr_customer_cli.data_accessors.sns_accessor import SnsAccessor
 from aws_idr_customer_cli.data_accessors.support_case_accessor import (
     SupportCaseAccessor,
 )
+from aws_idr_customer_cli.utils.constants import (
+    SCAN_CONNECT_TIMEOUT_SECONDS,
+    SCAN_MAX_ATTEMPTS,
+    SCAN_READ_TIMEOUT_SECONDS,
+)
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 
 SERVICE_REGION_FALLBACK_MAPPING = {
@@ -52,6 +58,23 @@ def create_aws_client(service: str, region: str) -> Any:
     if region == "global" and service in SERVICE_REGION_FALLBACK_MAPPING:
         region = SERVICE_REGION_FALLBACK_MAPPING[service]
     return boto3.client(service, region_name=region)  # type: ignore
+
+
+@lru_cache
+def create_aws_client_fast_scan(service: str, region: str) -> Any:
+    """AWS client factory with aggressive timeouts for best-effort region scans.
+
+    Used only by code paths that probe many regions in parallel where a single
+    unreachable endpoint (regional outage) must not stall the whole scan.
+    """
+    if region == "global" and service in SERVICE_REGION_FALLBACK_MAPPING:
+        region = SERVICE_REGION_FALLBACK_MAPPING[service]
+    config = Config(
+        connect_timeout=SCAN_CONNECT_TIMEOUT_SECONDS,
+        read_timeout=SCAN_READ_TIMEOUT_SECONDS,
+        retries={"max_attempts": SCAN_MAX_ATTEMPTS, "mode": "standard"},
+    )
+    return boto3.client(service, region_name=region, config=config)  # type: ignore
 
 
 class AccessorsModule(Module):
@@ -81,7 +104,9 @@ class AccessorsModule(Module):
         """Provide AWS CloudWatch metrics accessor."""
 
         return CloudWatchMetricsAccessor(
-            logger=logger, client_factory=create_aws_client
+            logger=logger,
+            client_factory=create_aws_client,
+            scan_client_factory=create_aws_client_fast_scan,
         )
 
     @singleton

@@ -1,10 +1,30 @@
+import os
 from contextlib import contextmanager
-from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    cast,
+)
 
 import questionary
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, TaskID
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.prompt import Confirm
 
 T = TypeVar("T")
@@ -205,6 +225,38 @@ class InteractiveUI(Generic[T]):
         progress = Progress()
         task = progress.add_task(message, total=total)
         return progress, task
+
+    @contextmanager
+    def progress_for(self, message: str, total: int) -> Iterator[Callable[[], None]]:
+        """Render a progress bar for a known-total loop, yielding an advance callback.
+
+        Usage:
+            with self.ui.progress_for("Analyzing resources", total=N) as advance:
+                for item in items:
+                    ...
+                    advance()
+
+        In silent mode, yields a no-op callable so callers don't need to branch.
+
+        Also disabled when IDR_DISABLE_PROGRESS=1 is set in the environment —
+        the integration test harness sets this so pexpect's byte-stream matcher
+        isn't fed Live-mode cursor-up/clear-line escape sequences.
+        """
+        if self._silent_mode or os.environ.get("IDR_DISABLE_PROGRESS") == "1":
+            yield lambda: None
+            return
+
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=self.console,
+        )
+        with progress:
+            task_id = progress.add_task(message, total=total)
+            yield lambda: progress.update(task_id, advance=1)
 
     def display_result(self, title: str, data: Dict[str, Any]) -> None:
         """Display operation result."""

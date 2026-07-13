@@ -561,6 +561,9 @@ class NonInteractiveAlarmService(NonInteractiveServiceBase):
                 "✅ Alarm creation completed successfully", style="green"
             )
 
+        display_id = (
+            self._support_case_service.get_display_id(case_id) if case_id else "None"
+        )
         summary_data = {
             "Workload name": (
                 submission.workload_onboard.name
@@ -571,7 +574,7 @@ class NonInteractiveAlarmService(NonInteractiveServiceBase):
             "Alarms created": str(created_count),
             "Alarms existing": str(existing_count),
             "Alarms failed": str(failed_count),
-            "Support case ID": case_id or "None",
+            "Support case ID": display_id,
             "Service linked role created": "Yes" if slr_created else "No",
         }
 

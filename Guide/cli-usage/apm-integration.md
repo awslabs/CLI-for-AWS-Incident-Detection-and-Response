@@ -4,7 +4,7 @@ The `awsidr setup-apm` command deploys AWS infrastructure to integrate AWS Incid
 
 ## Supported Integration Types
 
-* **EventBridge (SaaS Partners):** Direct integration via Amazon EventBridge (e.g., Datadog, New Relic, Splunk Observability Cloud). [Learn more](https://docs.aws.amazon.com/IDR/latest/userguide/idr-gs-ingest_alarms_from_apm_to_eventbridge.html)
+* **EventBridge (SaaS Partners):** Direct integration via Amazon EventBridge (e.g., Datadog, New Relic, Splunk Observability Cloud, PagerDuty). [Learn more](https://docs.aws.amazon.com/IDR/latest/userguide/idr-gs-ingest_alarms_from_apm_to_eventbridge.html)
 * **SNS Integration:** Direct integration via Amazon SNS (e.g., Grafana Cloud)
 * **Webhook Integration:** API Gateway-based integration for APMs without native AWS support (e.g., Dynatrace)
 
@@ -12,7 +12,7 @@ The `awsidr setup-apm` command deploys AWS infrastructure to integrate AWS Incid
 
 ### EventBridge (SaaS Partners)
 
-**For:** Datadog, New Relic, Splunk Observability Cloud
+**For:** Datadog, New Relic, Splunk Observability Cloud, PagerDuty
 
 **How it works:** APM tools with native AWS EventBridge support can send alerts directly to a partner event source, which the CLI connects to your custom EventBus.
 
@@ -240,7 +240,9 @@ Select your APM provider:
   3. Grafana Cloud
   4. Splunk Observability Cloud
   5. Dynatrace
-→ Enter your choice (1-5): 2
+  6. Grafana OSS
+  7. PagerDuty
+→ Enter your choice (1-7): 2
 
 ✅ Selected: New Relic
 ```
@@ -446,6 +448,7 @@ Step 9/9: Next Steps
 * **Splunk:** [Send alerts to Amazon EventBridge](https://help.splunk.com/en/splunk-observability-cloud/manage-data/available-data-sources/supported-integrations-in-splunk-observability-cloud/notification-services/send-alerts-to-amazon-eventbridge)
 * **Grafana Cloud:** [Configure Amazon SNS](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-amazon-sns/)
 * **Dynatrace:** [Webhook Integration](https://docs.dynatrace.com/docs/analyze-explore-automate/notifications-and-alerting/problem-notifications/webhook-integration)
+* **PagerDuty:** [Amazon EventBridge Integration Guide](https://support.pagerduty.com/main/docs/amazon-eventbridge-integration-guide)
 
 ## See Also
 

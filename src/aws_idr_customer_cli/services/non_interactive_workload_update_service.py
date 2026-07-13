@@ -128,7 +128,9 @@ class NonInteractiveWorkloadUpdateService(NonInteractiveServiceBase):
         self.store.update(session_id, submission)
 
         self.ui.display_info("✅ Update request submitted successfully")
-        self.ui.display_info(f"Case ID: {case_id}")
+        # Show the customer-facing displayId; the internal caseId stays persisted.
+        display_id = self._support_case_service.get_display_id(case_id)
+        self.ui.display_info(f"Case ID: {display_id}")
 
         return submission
 

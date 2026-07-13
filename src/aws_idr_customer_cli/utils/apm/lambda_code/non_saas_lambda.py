@@ -19,6 +19,40 @@ EVENTBUS_NAME_ENVIRONMENT_VALUE = "EnvEventBusName"  # Do not modify
 INCIDENT_PATH = os.environ.get("INCIDENT_PATH", 'raw_json["detail"]["ProblemTitle"]')
 
 
+def _find_key_case_insensitive(data: Dict[str, Any], target_key: str) -> Optional[Any]:
+    """Return the value whose key matches target_key ignoring case, else None."""
+    target_lower = target_key.lower()
+    for key, value in data.items():
+        if isinstance(key, str) and key.lower() == target_lower:
+            return value
+    return None
+
+
+def _extract_incident_identifier(
+    raw_json: Any, key: str = "ProblemTitle"
+) -> Optional[Any]:
+    """Find the incident identifier in a payload, tolerating structure and case.
+
+    APM payloads vary in both shape (the alert name may be nested under a
+    "detail" object or flat at the top level) and key casing (e.g. Dynatrace
+    classic webhooks emit "ProblemTitle" while some custom payloads send
+    "problemTitle"). This checks the nested "detail" object first, then the
+    top level, matching the key case-insensitively so either form resolves.
+    """
+    if not isinstance(raw_json, dict):
+        return None
+    scopes = []
+    detail = raw_json.get("detail")
+    if isinstance(detail, dict):
+        scopes.append(detail)
+    scopes.append(raw_json)
+    for scope in scopes:
+        value = _find_key_case_insensitive(scope, key)
+        if value is not None:
+            return value
+    return None
+
+
 class UnexpectedError(Exception):
     pass
 
@@ -139,12 +173,11 @@ class Transformations:
             incident_identifier = eval(INCIDENT_PATH)
         except Exception as e:
             logger.error(f"Error evaluating incident path '{INCIDENT_PATH}': {e}")
-            # Try fallback paths based on common APM structures
-            if "detail" in raw_json and "ProblemTitle" in raw_json["detail"]:
-                incident_identifier = raw_json["detail"]["ProblemTitle"]
-            elif "ProblemTitle" in raw_json:
-                incident_identifier = raw_json["ProblemTitle"]
-            else:
+            # The configured INCIDENT_PATH did not match the payload. Fall back
+            # to a structure- and case-tolerant lookup so payloads that are flat
+            # or nested, and use "ProblemTitle" or "problemTitle", still resolve.
+            incident_identifier = _extract_incident_identifier(raw_json)
+            if incident_identifier is None:
                 raise KeyError(
                     f"Could not extract incident identifier from path '{INCIDENT_PATH}' "
                 )

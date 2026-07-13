@@ -31,7 +31,10 @@ def handle_duplicate_support_case_interactive(
         return None
 
     ui.display_warning(f"Support case already exists for '{workload_name}'")
-    ui.display_info(f"   Case ID: {existing_case_id}")
+    # existing_case_id is the internal caseId (parsed from the error and used
+    # below for the update call); show the customer-facing displayId here.
+    display_id = support_case_service.get_display_id(existing_case_id)
+    ui.display_info(f"   Case ID: {display_id}")
 
     update_case = ui.prompt_confirm(update_prompt, default=True)
 
