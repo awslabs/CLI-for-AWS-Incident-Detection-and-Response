@@ -6,6 +6,10 @@ from aws_idr_customer_cli.utils.apm.apm_constants import (
     APM_PROVIDERS,
     EVENTBRIDGE_INSTRUCTIONS,
     FALLBACK_INSTRUCTION,
+    GENERATE_ONLY_FORMAT_DEFAULT,
+    GENERATE_ONLY_FORMAT_YAML,
+    GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN,
+    GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN_YAML,
     INTEGRATION_PARAMETERS,
     PROVIDER_TEMPLATE_FILES,
     SNS_INSTRUCTIONS,
@@ -138,6 +142,27 @@ def generate_stack_name(apm_provider: str) -> str:
     get_provider_config(apm_provider)
     clean_apm_name = apm_provider.replace(" ", "")
     return f"{clean_apm_name}-IntegrationForIDR"
+
+
+def get_default_generate_only_template_path(
+    apm_provider: str, output_format: str = GENERATE_ONLY_FORMAT_DEFAULT
+) -> str:
+    """Build the default output path for a generate-only template export.
+
+    Args:
+        apm_provider: Name of the APM provider
+        output_format: "json" (default) or "yaml" — selects the file extension
+
+    Returns:
+        Relative default path (e.g., "awsidr-apm-Datadog-template.json"
+        or "awsidr-apm-Datadog-template.yaml")
+    """
+    clean_apm_name = apm_provider.replace(" ", "")
+    if output_format == GENERATE_ONLY_FORMAT_YAML:
+        pattern = GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN_YAML
+    else:
+        pattern = GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN
+    return str(pattern.format(provider=clean_apm_name))
 
 
 def get_lambda_function_name(apm_provider: str) -> str:

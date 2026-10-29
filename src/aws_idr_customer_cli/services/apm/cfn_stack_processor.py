@@ -33,9 +33,16 @@ class CfnTemplateProcessor:
         apm_provider: str,
         region: str,
         custom_incident_path: Optional[str] = None,
+        validate: bool = True,
     ) -> str:
         """
         Process CloudFormation template with optional custom incident path.
+
+        Args:
+            validate: When True (default), the processed template is validated
+                via the CloudFormation ValidateTemplate API. Set to False for
+                offline template generation (e.g. generate-only export) so no AWS API
+                call is made.
         """
         try:
             template = json.loads(template_content)
@@ -60,7 +67,8 @@ class CfnTemplateProcessor:
         template = self._update_incident_path_env(template, incident_path)
 
         processed_template = json.dumps(template, indent=2)
-        self._validate_template(processed_template, region)
+        if validate:
+            self._validate_template(processed_template, region)
         return processed_template
 
     def _load_lambda_code(

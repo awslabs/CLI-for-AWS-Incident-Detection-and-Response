@@ -12,6 +12,10 @@ from aws_idr_customer_cli.services.apm.apm_service import ApmService
 from aws_idr_customer_cli.services.file_cache.data import OnboardingSubmission
 from aws_idr_customer_cli.services.file_cache.file_cache_service import FileCacheService
 from aws_idr_customer_cli.services.support_case_service import SupportCaseService
+from aws_idr_customer_cli.utils.apm.apm_constants import (
+    GENERATE_ONLY_FORMAT_CHOICES,
+    GENERATE_ONLY_FORMAT_DEFAULT,
+)
 from aws_idr_customer_cli.utils.log_handlers import CliLogger
 from aws_idr_customer_cli.utils.session.apm_setup_session import ApmSetupSession
 from aws_idr_customer_cli.utils.session.session_store import SessionStore
@@ -32,6 +36,9 @@ class SetupApm(CommandBase):
         awsidr setup-apm --resume {sessionId}
         awsidr setup-apm --verbose
         awsidr setup-apm --debug
+        awsidr setup-apm --generate-template-only
+        awsidr setup-apm --generate-template-only -o ./infra/idr-apm.json
+        awsidr setup-apm --generate-template-only --format yaml
     """
 
     @inject
@@ -57,15 +64,86 @@ class SetupApm(CommandBase):
         self.store = store
         self.validator = validator
         self._account_id: Optional[str] = None
+        self._generate_template_only: bool = False
+        self._output_template: Optional[str] = None
+        self._output_format: str = GENERATE_ONLY_FORMAT_DEFAULT
 
     @option("--resume", "-r", help="Resume from existing session ID")
+    @option(
+        "--generate-template-only",
+        "generate_template_only",
+        is_flag=True,
+        default=False,
+        help=(
+            "Generate the CloudFormation template and parameters to disk and "
+            "exit without deploying (no AWS resources are created)."
+        ),
+    )
+    @option(
+        "--output-template",
+        "-o",
+        "output_template",
+        type=click.Path(dir_okay=False, writable=True),
+        default=None,
+        help=(
+            "Output path for the generated template (only valid with "
+            "--generate-template-only; "
+            "defaults to ./awsidr-apm-<provider>-template.json)."
+        ),
+    )
+    @option(
+        "--format",
+        "output_format",
+        type=click.Choice(list(GENERATE_ONLY_FORMAT_CHOICES)),
+        default=GENERATE_ONLY_FORMAT_DEFAULT,
+        show_default=True,
+        help=(
+            "Output format for the generated CloudFormation template (only "
+            "valid with --generate-template-only). The parameters file is "
+            "always JSON, as required by CloudFormation."
+        ),
+    )
     def execute(
         self,
         resume: Optional[str] = None,
+        generate_template_only: bool = False,
+        output_template: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Execute the setup-apm command."""
         try:
+            if output_template and not generate_template_only:
+                return {
+                    "status": "error",
+                    "message": (
+                        "--output-template/-o can only be used together with "
+                        "--generate-template-only."
+                    ),
+                }
+
+            # Detect whether --format was actually supplied rather than
+            # comparing to the default: --format json (== default) would
+            # otherwise be silently accepted without --generate-template-only,
+            # inconsistent with -o which errors whenever provided.
+            ctx = click.get_current_context(silent=True)
+            format_provided = (
+                ctx is not None
+                and ctx.get_parameter_source("output_format")
+                != click.core.ParameterSource.DEFAULT
+            )
+            if format_provided and not generate_template_only:
+                return {
+                    "status": "error",
+                    "message": (
+                        "--format can only be used together with "
+                        "--generate-template-only."
+                    ),
+                }
+
+            self._generate_template_only = generate_template_only
+            self._output_template = output_template
+            self._output_format = output_format
             return self._execute_business_logic(resume, **kwargs)
         except Exception as e:
             self.logger.error(f"APM setup failed: {e}")
@@ -79,10 +157,19 @@ class SetupApm(CommandBase):
         """Execute APM setup business logic with session management."""
         self._account_id = self.sts_manager.retrieve_account_id_from_sts()
 
+        # Generate-only mode has no resume: it runs the interactive flow once
+        # and writes a template file instead of persisting a resumable deploy
+        # step. Never resume an existing session or prompt to resume one here —
+        # always start fresh, even if --resume was passed.
+        if self._generate_template_only:
+            session = self._create_apm_session(resume_session_id=None)
+            result = session.execute()
+            return self._handle_session_result(result, session)
+
         if resume:
             session = self._create_apm_session(resume_session_id=resume)
             result = session.execute()
-            return self._handle_session_result(result)
+            return self._handle_session_result(result, session)
 
         existing = self.store.find_latest_apm_session(self._account_id)
         if existing:
@@ -90,20 +177,32 @@ class SetupApm(CommandBase):
             if self._prompt_resume_apm(submission=submission):
                 session = self._create_apm_session(resume_session_id=session_id)
                 result = session.execute()
-                return self._handle_session_result(result)
+                return self._handle_session_result(result, session)
             else:
                 # Start fresh
                 session = self._create_apm_session(resume_session_id=None)
                 result = session.execute()
-                return self._handle_session_result(result)
+                return self._handle_session_result(result, session)
         else:
             session = self._create_apm_session(resume_session_id=None)
             result = session.execute()
-            return self._handle_session_result(result)
+            return self._handle_session_result(result, session)
 
-    def _handle_session_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_session_result(
+        self, result: Dict[str, Any], session: Optional[ApmSetupSession] = None
+    ) -> Dict[str, Any]:
         """Handle session execution result and convert to command result."""
         status = result.get("status")
+
+        # Generate-only: the session stops at the push step by design, having
+        # written the template instead of deploying it. That is a success.
+        if session is not None and getattr(session, "template_exported", False):
+            return {
+                "status": "success",
+                "template_only": True,
+                "output_path": session.template_output_path,
+                "parameters_path": session.template_parameters_path,
+            }
 
         if status == "completed":
             return {
@@ -111,6 +210,18 @@ class SetupApm(CommandBase):
                 "submission": result.get("submission"),
             }
         elif status == "quit":
+            # Generate-only has no resume, so never tell the user to resume.
+            if session is not None and getattr(
+                session, "generate_template_only", False
+            ):
+                return {
+                    "status": "cancelled",
+                    "message": (
+                        "Generate-only run stopped before completing; no "
+                        "resumable session was saved. Re-run "
+                        "awsidr setup-apm --generate-template-only."
+                    ),
+                }
             return {
                 "status": "cancelled",
                 "message": "APM setup stopped. Address the issues above and resume setup.",
@@ -142,6 +253,9 @@ class SetupApm(CommandBase):
             apm_validator=apm_validator,
             account_id=self._account_id,
             resume_session_id=resume_session_id,
+            generate_template_only=self._generate_template_only,
+            output_path=self._output_template,
+            output_format=self._output_format,
         )
 
     def _prompt_resume_apm(self, submission: OnboardingSubmission) -> bool:

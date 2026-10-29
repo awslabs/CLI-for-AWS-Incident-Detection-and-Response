@@ -34,6 +34,12 @@ ACTION_RETRY = "retry"
 ACTION_SKIP = "skip"
 ACTION_QUIT = "quit"
 ACTION_PAUSE = "pause"
+# A step returns ACTION_COMPLETE to end the session SUCCESSFULLY before the
+# final step (e.g. generate-only export finishes the run without deploying).
+# This is distinct from ACTION_QUIT, which signals a cancel/stop and reports a
+# "quit" status; ACTION_COMPLETE drives the normal completion path instead so
+# the command is not misreported as cancelled.
+ACTION_COMPLETE = "complete"
 
 
 # Status as enum
@@ -276,6 +282,16 @@ class InteractiveSession(ABC):
             elif action == ACTION_RETRY:
                 self._save_progress()
                 return True
+            elif action == ACTION_COMPLETE:
+                # The step finished the session successfully ahead of the final
+                # step (e.g. generate-only export). Jump to the end so execute()
+                # runs the normal completion path and reports COMPLETED, not
+                # QUIT. The step has already shown its own completion message, so
+                # suppress the generic one.
+                self._suppress_completion_message = True
+                self.current_step = len(self.steps)
+                self._save_progress()
+                return True
             elif (
                 action == ACTION_QUIT
                 or action == ACTION_PAUSE
@@ -313,7 +329,10 @@ class InteractiveSession(ABC):
         else:
             message = MSG_WO_SESSION_COMPLETED
 
-        self.ui.display_info(message=message, style=STYLE_GREEN)
+        # A step that completed the session early (ACTION_COMPLETE) has already
+        # displayed its own completion message; don't print the generic one too.
+        if not getattr(self, "_suppress_completion_message", False):
+            self.ui.display_info(message=message, style=STYLE_GREEN)
 
         return {
             STATUS_KEY: SessionStatus.COMPLETED,

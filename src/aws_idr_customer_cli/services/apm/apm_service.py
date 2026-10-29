@@ -1,10 +1,14 @@
 import importlib.resources
+import json
+import os
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, TypedDict
 from urllib.parse import quote
 
+import yaml
 from injector import inject
 from retry import retry
 
@@ -23,6 +27,7 @@ from aws_idr_customer_cli.services.apm.cfn_stack_processor import CfnTemplatePro
 from aws_idr_customer_cli.services.file_cache.data import ApmSetup
 from aws_idr_customer_cli.utils.apm.apm_config import (
     generate_stack_name,
+    get_default_generate_only_template_path,
     get_integration_type,
     get_lambda_function_name,
     get_template_file,
@@ -45,10 +50,20 @@ from aws_idr_customer_cli.utils.apm.apm_constants import (
     ERROR_PARTNER_ARN_MISSING,
     ERROR_SNS_ARN_MISSING,
     ERROR_TEMPLATE_EMPTY,
+    ERROR_TEMPLATE_EXISTS,
     ERROR_TEMPLATE_FAILED,
     ERROR_TEMPLATE_LOAD_FAILED,
     ERROR_TEMPLATE_NOT_FOUND,
+    ERROR_TEMPLATE_WRITE_FAILED,
     FAILURE_GUIDANCE,
+    GENERATE_ONLY_FORMAT_DEFAULT,
+    GENERATE_ONLY_FORMAT_YAML,
+    GENERATE_ONLY_MANUAL_DEPLOY_COMMAND,
+    GENERATE_ONLY_MANUAL_DEPLOY_HEADER,
+    GENERATE_ONLY_PARAMETERS_FILENAME_SUFFIX,
+    GENERATE_ONLY_PARAMETERS_SAVED_MESSAGE,
+    GENERATE_ONLY_TEMPLATE_EXPORTED_MESSAGE,
+    GENERATE_ONLY_TEMPLATE_SAVED_MESSAGE,
     MSG_DEPLOYMENT_FAILED,
     MSG_NO_RESOURCES,
     MSG_ROLLBACK_COMPLETE,
@@ -79,6 +94,9 @@ class DeploymentResult(TypedDict, total=False):
     error: Optional[str]
     failure_reason: Optional[str]
     rollback_initiated: Optional[bool]
+    template_only: Optional[bool]
+    output_path: Optional[str]
+    parameters_path: Optional[str]
 
 
 class LambdaActivity(NamedTuple):
@@ -196,8 +214,21 @@ class ApmService:
         region: str,
         parameters: Dict[str, str],
         custom_incident_path: Optional[str] = None,
+        generate_template_only: bool = False,
+        output_path: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
     ) -> DeploymentResult:
-        """Deploy CloudFormation stack with monitoring and resource display."""
+        """Deploy CloudFormation stack with monitoring and resource display.
+
+        When ``generate_template_only`` is True, the processed template is
+        written to disk and no stack-mutating or template-validation
+        CloudFormation calls are made (neither ValidateTemplate nor
+        CreateStack); nothing is created in the account. The interactive flow
+        may still perform read-only checks earlier (e.g. STS GetCallerIdentity,
+        provider prerequisite validation, and a read-only DescribeStacks
+        existing-stack check). This lets security/platform teams inspect the
+        template or deploy it through their own CI/CD pipeline.
+        """
         stack_name = generate_stack_name(apm_provider)
 
         try:
@@ -207,8 +238,23 @@ class ApmService:
             )
 
             processed_template = self._prepare_template(
-                apm_provider, integration_type, region, custom_incident_path
+                apm_provider,
+                integration_type,
+                region,
+                custom_incident_path,
+                validate=not generate_template_only,
             )
+
+            if generate_template_only:
+                return self._export_template_to_disk(
+                    apm_provider=apm_provider,
+                    stack_name=stack_name,
+                    region=region,
+                    processed_template=processed_template,
+                    parameters=parameters,
+                    output_path=output_path,
+                    output_format=output_format,
+                )
 
             self.ui.display_info(f"🚀 Deploying CloudFormation stack: {stack_name}")
             deploy_response = self.cloudformation_accessor.deploy_stack(
@@ -230,6 +276,136 @@ class ApmService:
                 stack_name=stack_name,
             )
 
+    def _export_template_to_disk(
+        self,
+        apm_provider: str,
+        stack_name: str,
+        region: str,
+        processed_template: str,
+        parameters: Dict[str, str],
+        output_path: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
+    ) -> DeploymentResult:
+        """Write the processed CloudFormation template and its parameters to disk.
+
+        This is the generate-only counterpart of ``deploy_stack``: the exact
+        template body and parameter values the CLI would have passed to
+        CreateStack are written out instead. No CloudFormation API calls are
+        made. Existing files are never overwritten.
+
+        The template body is written as JSON (default) or YAML per
+        ``output_format``. The parameters sidecar is always JSON because
+        ``aws cloudformation create-stack --parameters file://`` requires JSON.
+
+        Returns a synthetic successful DeploymentResult flagged with
+        ``template_only`` so callers can skip deployment-dependent steps.
+        """
+        target = output_path or get_default_generate_only_template_path(
+            apm_provider, output_format
+        )
+        template_file = Path(target).expanduser()
+        # Derive the parameters sidecar from the FULL template filename (not the
+        # stem) so runs that differ only by template extension (.json vs .yaml)
+        # produce distinct sidecar files and never collide.
+        parameters_file = template_file.with_name(
+            template_file.name + GENERATE_ONLY_PARAMETERS_FILENAME_SUFFIX
+        )
+
+        # Serialize the template body in the requested format. The processed
+        # template is a JSON string; for YAML we round-trip through the parsed
+        # object. Parameters stay JSON (CFN --parameters requires JSON).
+        template_body = self._format_template_body(processed_template, output_format)
+
+        for existing in (template_file, parameters_file):
+            if existing.exists():
+                error_msg = ERROR_TEMPLATE_EXISTS.format(path=os.path.abspath(existing))
+                self.logger.error(error_msg)
+                self.ui.display_error(error_msg)
+                return DeploymentResult(
+                    success=False,
+                    stack_name=stack_name,
+                    error=error_msg,
+                    template_only=True,
+                )
+
+        # Same shape CloudFormation expects for `create-stack --parameters file://`
+        parameters_body = json.dumps(
+            [{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
+            indent=2,
+        )
+
+        try:
+            template_file.parent.mkdir(parents=True, exist_ok=True)
+            template_file.write_text(template_body, encoding=TEMPLATE_ENCODING)
+            parameters_file.write_text(parameters_body, encoding=TEMPLATE_ENCODING)
+        except OSError as e:
+            # Clean up any partially-written files so a failed export leaves the
+            # filesystem unchanged and does not trip the overwrite guard on retry.
+            template_file.unlink(missing_ok=True)
+            parameters_file.unlink(missing_ok=True)
+            error_msg = ERROR_TEMPLATE_WRITE_FAILED.format(
+                path=os.path.abspath(template_file), error=e
+            )
+            self.logger.error(error_msg)
+            self.ui.display_error(error_msg)
+            return DeploymentResult(
+                success=False,
+                stack_name=stack_name,
+                error=error_msg,
+                template_only=True,
+            )
+
+        template_path = os.path.abspath(template_file)
+        parameters_path = os.path.abspath(parameters_file)
+        self.logger.info(f"Template exported to {template_path}")
+        self.logger.info(f"Parameters exported to {parameters_path}")
+
+        self.ui.display_info(GENERATE_ONLY_TEMPLATE_EXPORTED_MESSAGE)
+        self.ui.display_info(
+            GENERATE_ONLY_TEMPLATE_SAVED_MESSAGE.format(path=template_path)
+        )
+        self.ui.display_info(
+            GENERATE_ONLY_PARAMETERS_SAVED_MESSAGE.format(path=parameters_path)
+        )
+        self.ui.display_info(GENERATE_ONLY_MANUAL_DEPLOY_HEADER)
+        self.ui.display_info(
+            GENERATE_ONLY_MANUAL_DEPLOY_COMMAND.format(
+                stack_name=stack_name,
+                path=template_path,
+                parameters_path=parameters_path,
+                region=region,
+            )
+        )
+
+        return DeploymentResult(
+            success=True,
+            stack_name=stack_name,
+            region=region,
+            template_only=True,
+            output_path=template_path,
+            parameters_path=parameters_path,
+        )
+
+    def _format_template_body(self, processed_template: str, output_format: str) -> str:
+        """Return the template body in the requested format.
+
+        The processed template is a JSON string. For JSON we return it as-is;
+        for YAML we parse and re-dump. Falls back to the original JSON if YAML
+        serialization fails for any reason.
+        """
+        if output_format != GENERATE_ONLY_FORMAT_YAML:
+            return processed_template
+        try:
+            parsed = json.loads(processed_template)
+            return str(
+                yaml.safe_dump(parsed, default_flow_style=False, sort_keys=False)
+            )
+        except (json.JSONDecodeError, yaml.YAMLError) as e:
+            self.logger.warning(
+                f"Could not convert template to YAML ({e}); writing JSON instead."
+            )
+            return processed_template
+
     def _log_deployment_info(
         self,
         apm_provider: str,
@@ -249,6 +425,7 @@ class ApmService:
         integration_type: IntegrationType,
         region: str,
         custom_incident_path: Optional[str],
+        validate: bool = True,
     ) -> str:
         """Load and process CloudFormation template."""
         template_content = self.load_cloudformation_template(apm_provider)
@@ -258,6 +435,7 @@ class ApmService:
             apm_provider,
             region,
             custom_incident_path,
+            validate=validate,
         )
         return template_result
 
@@ -471,7 +649,13 @@ class ApmService:
         parameters[PARAM_SNS_TRIGGER] = apm_setup.sns_topic_arn
 
     def deploy_non_saas_stack(
-        self, provider: str, region: str, custom_incident_path: Optional[str] = None
+        self,
+        provider: str,
+        region: str,
+        custom_incident_path: Optional[str] = None,
+        generate_template_only: bool = False,
+        output_path: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
     ) -> DeploymentResult:
         """Deploy Non-SaaS (webhook-based) CloudFormation stack."""
         return self.deploy_and_monitor_stack(
@@ -479,6 +663,9 @@ class ApmService:
             region=region,
             custom_incident_path=custom_incident_path,
             parameters={PARAM_APM_NAME: provider.replace(" ", "")},
+            generate_template_only=generate_template_only,
+            output_path=output_path,
+            output_format=output_format,
         )
 
     def deploy_saas_or_sns_stack(
@@ -488,6 +675,9 @@ class ApmService:
         integration_type: IntegrationType,
         apm_setup: ApmSetup,
         custom_incident_path: Optional[str] = None,
+        generate_template_only: bool = False,
+        output_path: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
     ) -> DeploymentResult:
         """Deploy SaaS or SNS CloudFormation stack."""
         parameters = self.build_cfn_parameters(provider, integration_type, apm_setup)
@@ -497,6 +687,9 @@ class ApmService:
             region=region,
             parameters=parameters,
             custom_incident_path=custom_incident_path,
+            generate_template_only=generate_template_only,
+            output_path=output_path,
+            output_format=output_format,
         )
 
     def _check_lambda_activity(

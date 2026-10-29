@@ -68,6 +68,44 @@ CFN_FAILED_STATUS = "FAILED"
 # Template Configuration
 TEMPLATE_ENCODING = "utf-8"
 
+# Generate-only template export
+GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN = "awsidr-apm-{provider}-template.json"
+GENERATE_ONLY_TEMPLATE_FILENAME_PATTERN_YAML = "awsidr-apm-{provider}-template.yaml"
+GENERATE_ONLY_PARAMETERS_FILENAME_SUFFIX = "-parameters.json"
+# Output format for the generated template. The parameters sidecar is always
+# JSON because `aws cloudformation create-stack --parameters file://` requires
+# JSON regardless of the template body format.
+GENERATE_ONLY_FORMAT_JSON = "json"
+GENERATE_ONLY_FORMAT_YAML = "yaml"
+GENERATE_ONLY_FORMAT_DEFAULT = GENERATE_ONLY_FORMAT_JSON
+GENERATE_ONLY_FORMAT_CHOICES = (GENERATE_ONLY_FORMAT_JSON, GENERATE_ONLY_FORMAT_YAML)
+GENERATE_ONLY_TEMPLATE_EXPORTED_MESSAGE = (
+    "✅ CloudFormation template exported (no stack was created in your account)."
+)
+GENERATE_ONLY_TEMPLATE_SAVED_MESSAGE = "   • Template:   {path}"
+GENERATE_ONLY_PARAMETERS_SAVED_MESSAGE = "   • Parameters: {path}"
+GENERATE_ONLY_MANUAL_DEPLOY_HEADER = (
+    "\nReview the files, then deploy when ready — this mirrors what the CLI "
+    "would have run:"
+)
+GENERATE_ONLY_MANUAL_DEPLOY_COMMAND = (
+    "   aws cloudformation create-stack \\\n"
+    "     --stack-name {stack_name} \\\n"
+    "     --template-body file://{path} \\\n"
+    "     --parameters file://{parameters_path} \\\n"
+    "     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \\\n"
+    "     --region {region}"
+)
+GENERATE_ONLY_SESSION_COMPLETE_MESSAGE = (
+    " ✅  Generate-only run complete — deploy the exported template, then run "
+    "'awsidr ingest-alarms' to onboard your APM alarms."
+)
+ERROR_TEMPLATE_WRITE_FAILED = "Failed to write '{path}': {error}"
+ERROR_TEMPLATE_EXISTS = (
+    "Output file already exists: '{path}'. Remove it or choose another path "
+    "with --output-template/-o."
+)
+
 # Service Error Messages
 ERROR_TEMPLATE_NOT_FOUND = "Template not found: {}"
 ERROR_TEMPLATE_EMPTY = "Template {} is empty"
