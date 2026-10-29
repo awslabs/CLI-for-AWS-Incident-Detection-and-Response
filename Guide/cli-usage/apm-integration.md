@@ -192,6 +192,57 @@ If no errors are found and payload is received successfully, your integration is
 * API Gateway webhook URL (for webhook integrations)
 * Secrets Manager token (for webhook integrations)
 
+#### Generate the template without deploying (`--generate-template-only`)
+
+Use `--generate-template-only` to run `setup-apm` exactly as normal — region,
+provider, prerequisites and incident path are all collected and validated the
+same way — but at the final step the CLI writes the CloudFormation template and
+its parameter values to disk **instead of** creating the stack. No `CreateStack`
+(or `ValidateTemplate`) call is made; nothing is created in your account. AWS
+credentials are still required for the earlier read-only checks.
+
+This is useful when security or platform teams need to inspect the template, or
+deploy it through their own CI/CD pipeline (AWS CDK, Terraform, or a GitOps
+workflow) rather than letting the CLI deploy it directly.
+
+```
+# Writes ./awsidr-apm-<provider>-template.json
+#    and ./awsidr-apm-<provider>-template.json-parameters.json
+awsidr setup-apm --generate-template-only
+
+# Custom path (parent directories are created if needed)
+awsidr setup-apm --generate-template-only -o ./infrastructure/idr-apm.json
+
+# Emit the template as YAML instead of JSON
+#    Writes ./awsidr-apm-<provider>-template.yaml
+awsidr setup-apm --generate-template-only --format yaml
+```
+
+Notes:
+* `--output-template` / `-o` is only valid together with
+  `--generate-template-only`. Using `-o` on its own returns an error.
+* `--format` accepts `json` (default) or `yaml` and is only valid together with
+  `--generate-template-only`. It selects the format of the **template** body; the
+  parameters file is always written as JSON, because
+  `aws cloudformation create-stack --parameters file://` requires JSON.
+* When no `-o` is given, the default filename extension follows `--format`
+  (`.json` or `.yaml`). With `-o`, the path you provide is used as-is.
+* The parameters sidecar is named after the full template filename
+  (`<template-filename>-parameters.json`), so a JSON run and a YAML run written
+  into the same directory produce distinct sidecar files and do not collide.
+* Existing files are never overwritten — remove them or choose another `-o` path.
+* The CLI prints the equivalent deploy command, which mirrors what it would have
+  run itself:
+
+  ```
+  aws cloudformation create-stack \
+    --stack-name <Provider>-IntegrationForIDR \
+    --template-body file://awsidr-apm-<provider>-template.json \
+    --parameters file://awsidr-apm-<provider>-template.json-parameters.json \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+    --region <region>
+  ```
+
 ### awsidr ingest-alarms
 
 **Purpose:** Onboards APM alarms into your IDR workload for incident response

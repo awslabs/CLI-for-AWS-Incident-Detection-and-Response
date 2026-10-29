@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from botocore.exceptions import ClientError
 
 from aws_idr_customer_cli.clients.iam import BotoIamManager
 from aws_idr_customer_cli.services.apm.apm_service import ApmService
-from aws_idr_customer_cli.services.file_cache.data import ApmSetup
+from aws_idr_customer_cli.services.file_cache.data import ApmSetup, OnboardingStatus
 from aws_idr_customer_cli.services.file_cache.file_cache_service import FileCacheService
 from aws_idr_customer_cli.services.support_case_service import SupportCaseService
 from aws_idr_customer_cli.utils.apm.apm_config import (
@@ -55,6 +55,8 @@ from aws_idr_customer_cli.utils.apm.apm_constants import (
     APM_WEBHOOK_VALIDATION_NOTE,
     CONFIG_MODIFY_APM_PROVIDER,
     CONFIG_MODIFY_DEPLOYMENT_REGION,
+    GENERATE_ONLY_FORMAT_DEFAULT,
+    GENERATE_ONLY_SESSION_COMPLETE_MESSAGE,
     GRAFANA_OSS_DOCS_VERSION_DISCLAIMER,
     GRAFANA_OSS_WEBHOOK_SETUP_INSTRUCTIONS,
     SESSION_STEP_INDEX_NEXT_STEPS,
@@ -71,11 +73,16 @@ from aws_idr_customer_cli.utils.apm.apm_stack_helpers import extract_stack_resou
 from aws_idr_customer_cli.utils.constants import DEFAULT_REGION, CommandType
 from aws_idr_customer_cli.utils.session.interactive_session import (
     ACTION_BACK,
+    ACTION_COMPLETE,
     ACTION_KEY,
     ACTION_QUIT,
+    SESSION_ID_KEY,
+    STATUS_KEY,
     STYLE_BLUE,
     STYLE_DIM,
+    STYLE_YELLOW,
     InteractiveSession,
+    SessionStatus,
     session_step,
 )
 from aws_idr_customer_cli.utils.session.session_store import SessionStore
@@ -98,6 +105,9 @@ class ApmSetupSession(InteractiveSession):
         apm_validator: ApmPrerequisiteValidator,
         account_id: str = "123456789012",
         resume_session_id: Optional[str] = None,
+        generate_template_only: bool = False,
+        output_path: Optional[str] = None,
+        output_format: str = GENERATE_ONLY_FORMAT_DEFAULT,
     ) -> None:
         """Initialize APM setup session following working command patterns."""
         super().__init__(CommandType.APM_SETUP, account_id, store, resume_session_id)
@@ -107,6 +117,14 @@ class ApmSetupSession(InteractiveSession):
         self.support_case_service = support_case_service
         self.iam_manager = iam_manager
         self.apm_validator = apm_validator
+        # Generate-template-only mode: export the processed
+        # CloudFormation template to disk instead of deploying it.
+        self.generate_template_only = generate_template_only
+        self.output_path = output_path
+        self.output_format = output_format
+        self.template_exported: bool = False
+        self.template_output_path: Optional[str] = None
+        self.template_parameters_path: Optional[str] = None
 
     def _display_resume_info(self) -> None:
         """Display information about resuming APM setup session."""
@@ -312,6 +330,17 @@ class ApmSetupSession(InteractiveSession):
 
         if stack_exists:
             self.ui.display_info(f"✅ Found existing {provider} stack: {stack_name}")
+            if getattr(self, "generate_template_only", False):
+                # Generate-only still generates the template regardless of
+                # whether a stack already exists — the read above is read-only
+                # (DescribeStacks) and only informs the message. Keep going so
+                # the template is exported at the final step rather than
+                # navigating to the ingest-alarms next step.
+                self.ui.display_info(
+                    "ℹ️  Generate-only mode: continuing so the template can still "
+                    "be exported for review."
+                )
+                return {}
             self.ui.display_info(
                 "📋 APM Integration Infrastructure stack is already present in your account, "
                 f"(please proceed with ingesting APM alarms using {APM_NEXT_STEPS_COMMAND} command)"
@@ -395,6 +424,12 @@ class ApmSetupSession(InteractiveSession):
 
         if not self._require_provider():
             return {ACTION_KEY: ACTION_BACK}
+
+        # Generate-only: export the processed template to disk and finish, without
+        # any CloudFormation API calls or resource creation.
+        if getattr(self, "generate_template_only", False):
+            return self._generate_template_only(provider, region, integration_type)
+
         # Check if stack already exists and resources are stored (resuming after webhook config)
         stack_name = generate_stack_name(provider)
         if (
@@ -467,6 +502,127 @@ class ApmSetupSession(InteractiveSession):
             )
             return {ACTION_KEY: ACTION_QUIT}
         return {}
+
+    def _generate_template_only(
+        self, provider: str, region: str, integration_type: IntegrationType
+    ) -> Dict[str, Any]:
+        """Write the CloudFormation template (and parameters) to disk instead of
+        deploying. All inputs have already been collected by the preceding steps
+        exactly as in a normal run; only the final push is replaced by a file."""
+        apm_setup = self.submission.apm_setup
+
+        self.ui.display_info(
+            "📝 Generate-only mode: the CloudFormation template will be written "
+            "to disk and no stack will be created in your account."
+        )
+
+        try:
+            if integration_type == IntegrationType.NON_SAAS:
+                result = self.apm_service.deploy_non_saas_stack(
+                    provider,
+                    region,
+                    apm_setup.custom_incident_path,
+                    generate_template_only=True,
+                    output_path=self.output_path,
+                    output_format=self.output_format,
+                )
+            else:
+                incident_path = (
+                    apm_setup.custom_incident_path
+                    or get_default_incident_path(provider)
+                )
+                parameters = self.apm_service.build_cfn_parameters(
+                    provider, integration_type, apm_setup
+                )
+                self._display_cfn_parameters(
+                    provider.replace(" ", ""), parameters, incident_path
+                )
+                result = self.apm_service.deploy_saas_or_sns_stack(
+                    provider,
+                    region,
+                    integration_type,
+                    apm_setup,
+                    apm_setup.custom_incident_path,
+                    generate_template_only=True,
+                    output_path=self.output_path,
+                    output_format=self.output_format,
+                )
+        except (ClientError, ValueError) as e:
+            # Generate-only has no resume: it writes a file in one pass and
+            # never persists a resumable deploy step. On failure, tell the user
+            # to re-run the command, not to --resume (a resume would omit
+            # --generate-template-only and could deploy).
+            self.ui.display_error(f"Template generation error: {e}")
+            self.ui.display_info(
+                "   • Fix the issue above and re-run: "
+                "awsidr setup-apm --generate-template-only"
+            )
+            return {ACTION_KEY: ACTION_QUIT}
+
+        if not result.get("success", False):
+            self.ui.display_info(
+                "   • Fix the issue above and re-run: "
+                "awsidr setup-apm --generate-template-only"
+            )
+            return {ACTION_KEY: ACTION_QUIT}
+
+        # Success: the template was written and nothing was deployed. The
+        # remaining steps (Lambda validation, next steps) do not apply, so end
+        # the session via the dedicated completion path rather than ACTION_QUIT
+        # — a generate-only run is a success, not a cancel, and has no resume.
+        self.template_exported = True
+        self.template_output_path = result.get("output_path")
+        self.template_parameters_path = result.get("parameters_path")
+        if self.submission:
+            self.submission.status = OnboardingStatus.COMPLETED
+        self.ui.display_info(GENERATE_ONLY_SESSION_COMPLETE_MESSAGE, style="green")
+        return {ACTION_KEY: ACTION_COMPLETE}
+
+    def _discard_generate_only_session(self) -> None:
+        """Delete the persisted session for a generate-only run.
+
+        Generate-only has no resume, so a run that does not complete must leave
+        nothing behind: the next run — generate-only or normal — must start
+        clean and must never be offered this session to resume. The framework
+        creates an IN_PROGRESS session in __init__ and save-on-exit would leave
+        it there, so we delete it explicitly on any non-success exit.
+        """
+        if self.session_id:
+            try:
+                self.store.delete(self.session_id)
+            except Exception as e:  # best-effort cleanup; never mask the exit
+                self.logger.warning(
+                    f"Could not clean up generate-only session "
+                    f"{self.session_id}: {e}"
+                )
+
+    def _save_and_quit(self) -> Dict[str, Any]:
+        """Quit path. For generate-only, discard the session instead of saving
+        it (no resume), so nothing is left IN_PROGRESS for the next run."""
+        if getattr(self, "generate_template_only", False):
+            self._discard_generate_only_session()
+            return {
+                STATUS_KEY: SessionStatus.QUIT,
+                SESSION_ID_KEY: None,
+            }
+        return cast(Dict[str, Any], super()._save_and_quit())
+
+    def _pause_session(self) -> Dict[str, Any]:
+        """Pause (Ctrl-C) path. Generate-only cannot be resumed, so a pause is
+        treated as an abort: discard the session and do NOT print a
+        '--resume' hint. The next run starts clean."""
+        if getattr(self, "generate_template_only", False):
+            self._discard_generate_only_session()
+            self.ui.display_info(
+                "\nGenerate-only run aborted. Nothing was written; "
+                "re-run: awsidr setup-apm --generate-template-only",
+                style=STYLE_YELLOW,
+            )
+            return {
+                STATUS_KEY: SessionStatus.QUIT,
+                SESSION_ID_KEY: None,
+            }
+        return cast(Dict[str, Any], super()._pause_session())
 
     def _confirm_deployment(self, provider: str, region: str) -> bool:
         """Confirm CloudFormation stack deployment with user."""
